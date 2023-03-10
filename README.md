@@ -1,38 +1,23 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# chess
+A online chess game created with ReactJS and Socket.io, with a MongoDB Cluster as a database.
+It is a chess board, available with all kinds of rules, excluding en passant.
 
-## Getting Started
+A text input is given at the home page, where users can join a room with a code, or automatically create a room.
+These socket rooms only allow 2 people, and reconnection is available.
 
-First, run the development server:
+The MongoDB Cluster stores information about the rooms, which include the users, the current positions, who's turn it is, and the code.
+To be able to reuse codes, the document in the collection is automatically deleted once the users are equal to 0.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+Valid positions for the piece are shown on your screen in red, and the previous position played by the opposition is also highlighted.
+All of the functions were written by me, including the logic for the pieces, when checkmate happens, and handling sockets and API calls
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+![Chess board](https://i.imgur.com/Rx1WSwtl.png)
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+![Opponent disconnection](https://i.imgur.com/sdgwOT3l.png)
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+![Vaild movements](https://i.imgur.com/p53gIAql.png)
 
-## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+![Checkmate](https://i.imgur.com/go0LTNUl.png)

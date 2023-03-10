@@ -1,0 +1,17 @@
+.cell {
+  width: 70px;
+  height: 70px;
+  display: inline-block;
+}
+
+.row {
+  height: 70px;
+}
+
+.even {
+  background-color: rgba(238, 216, 192, 1);
+}
+
+.odd {
+  background-color: rgba(138, 87, 66, 1);
+}
