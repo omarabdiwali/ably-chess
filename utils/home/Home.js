@@ -33,7 +33,7 @@ export default function HomePage() {
 
   const socketInitializer = async () => {
     await fetch('/api/socket');
-    socket = io()
+    socket = io(proces.env.BASE_URL);
   }
 
   useEffect(() => {
