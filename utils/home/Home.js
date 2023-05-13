@@ -32,8 +32,7 @@ export default function HomePage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const socketInitializer = async () => {
-    await fetch('/api/socket');
-    socket = io(process.env.BASE_URL);
+    fetch('/api/socket').then(() => socket = io(process.env.BASE_URL, { transports: ['websocket'] })).catch(err => console.log(err));
   }
 
   useEffect(() => {

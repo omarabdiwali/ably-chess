@@ -6,10 +6,11 @@ const SocketHandler = (_, res) => {
 
   if (res.socket.server.io) {
     io = res.socket.server.io;
-
-  } else {
-    
+  }
+  
+  else {  
     io = new Server(res.socket.server);
+   
     res.socket.server.io = io;
 
     io.on('connection', (socket) => {
@@ -30,7 +31,7 @@ const SocketHandler = (_, res) => {
     
       socket.on('pieces', (pieces) => {
         let temp = JSON.parse(pieces);
-        fetch(`${process.env.BASE_URL}/api/move`, {
+        fetch(`/api/move`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -62,7 +63,7 @@ const SocketHandler = (_, res) => {
             users -= 1;
           }
                 
-          fetch(`${process.env.BASE_URL}/api/delete`, {
+          fetch(`/api/delete`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -77,6 +78,7 @@ const SocketHandler = (_, res) => {
       })
     })
   }
+  
   res.end()
 }
 
