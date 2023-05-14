@@ -31,7 +31,7 @@ const SocketHandler = (_, res) => {
     
       socket.on('pieces', (pieces) => {
         let temp = JSON.parse(pieces);
-        fetch(`http://localhost:3000/api/move`, {
+        fetch(`${process.env.URL}/api/move`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -50,12 +50,13 @@ const SocketHandler = (_, res) => {
         socket.to(socket.room).emit('game', (winner));
       })
     
-      socket.on('disconnect', async () => {        
+      socket.on('disconnect', () => {
+        socket.to(socket.room).emit("delete");
+        
         if (socket.room) {
           let users = numClients[socket.room];
 
           if (users === 1) {
-            socket.to(socket.room).emit('delete');
             delete numClients[socket.room];
             users = 0;
           } else {
@@ -63,7 +64,7 @@ const SocketHandler = (_, res) => {
             users -= 1;
           }
                 
-          fetch(`http://localhost:3000/api/delete`, {
+          fetch(`${process.env.URL}/api/delete`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
