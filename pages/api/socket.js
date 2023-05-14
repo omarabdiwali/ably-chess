@@ -31,7 +31,7 @@ const SocketHandler = (_, res) => {
     
       socket.on('pieces', (pieces) => {
         let temp = JSON.parse(pieces);
-        fetch(`/api/move`, {
+        fetch(`http://localhost:3000/api/move`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -63,7 +63,7 @@ const SocketHandler = (_, res) => {
             users -= 1;
           }
                 
-          fetch(`/api/delete`, {
+          fetch(`http://localhost:3000/api/delete`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
