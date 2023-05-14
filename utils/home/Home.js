@@ -32,7 +32,8 @@ export default function HomePage() {
   const { enqueueSnackbar } = useSnackbar();
 
   const socketInitializer = () => {
-    fetch('/api/socket').then(() => socket = io()).catch(err => console.log(err));
+    fetch('/api/socket').catch(err => console.log(err));
+    socket = io();
   }
 
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function HomePage() {
         setCreated(true);
         setTurn("white");
         btn.disabled = false;
-        // btn.click();
+        setTimeout(() => btn.click(), 500);
       }
       else {
         createRoom();
