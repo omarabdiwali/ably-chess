@@ -94,8 +94,8 @@ export default function ComputerBoard({position}) {
   const pieceMovement = (e) => {
     e.preventDefault();
     if (game === "play") {
-      let x = Math.ceil((e.clientX - offset.left) / SIZE);
-      let y = Math.ceil((e.clientY - offset.top) / SIZE);
+      let x = Math.ceil((e.pageX - offset.left) / SIZE);
+      let y = Math.ceil((e.pageY - offset.top) / SIZE);
       let pos = (y - 1) * 8 + x;
       let row = Math.floor(pos / 8);
       let col = (pos - (row * 8) - 1);
