@@ -85,10 +85,14 @@ body {
   overflow-x: hidden;
 } */
 
+::-webkit-scrollbar {
+  display: none;
+}
+
 
 body {
   background-color: #2b3953;
-  overflow: hidden;
+  overflow: scroll;
 }
 
 /* a {
