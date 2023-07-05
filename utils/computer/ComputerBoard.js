@@ -47,7 +47,7 @@ export default function ComputerBoard({position}) {
   }, [position])
 
   const computerMove = () => {
-    let move = minimaxRoot(1, curPos, true, bCastle, blCastle, brCastle, passedMoves);
+    let move = minimaxRoot(2, curPos, true, bCastle, blCastle, brCastle, passedMoves);
     setPassedMoves(move[1]);
     let piece = move[0][0], prevPos = move[0][2], nextPos = move[0][3];
 

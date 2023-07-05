@@ -288,7 +288,8 @@ export function checkMate(next, positions) {
       }
     }
     else {
-      return [true, next === "white" ? "Black Wins!" : "White Wins!"];
+      if (next === "white") return [true, "Black Wins"];
+      else return [true, "White Wins"];
     }
   }
 }
