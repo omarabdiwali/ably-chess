@@ -177,7 +177,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       clearSquare(64);
   
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
-      let piece = drawImage("wRook 2");
+      let piece = drawImage("wRook 2", 62);
       square.appendChild(piece);
 
       positions[64] = null;
@@ -190,7 +190,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       clearSquare(57);
 
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
-      let piece = drawImage("wRook 1");
+      let piece = drawImage("wRook 1", 60);
       square.appendChild(piece);
 
       positions[57] = null;
@@ -203,7 +203,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       clearSquare(8);
   
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
-      let piece = drawImage("bRook 2");
+      let piece = drawImage("bRook 2", 6);
       square.appendChild(piece);
 
       positions[8] = null;
@@ -215,7 +215,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       clearSquare(1);
   
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
-      let piece = drawImage("bRook 1");
+      let piece = drawImage("bRook 1", 4);
       square.appendChild(piece);
 
       positions[1] = null;
@@ -225,7 +225,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
 
   let sq = document.getElementById("board").childNodes.item(`${row}`).children[col];
 
-  let piece = drawImage(type);
+  let piece = drawImage(type, pos);
   sq.appendChild(piece);
 
   positions[prevPos] = null;
@@ -247,7 +247,7 @@ export function startGame(positions) {
       }
 
       let sq = document.getElementById("board").childNodes.item(`${row}`).children[col];
-      let piece = drawImage(val);
+      let piece = drawImage(val, pos);
       
       sq.appendChild(piece);
     }
@@ -470,11 +470,12 @@ function checked(next, positions) {
 }
 
 /** Draws the piece on the board. */
-function drawImage(type) {
+function drawImage(type, pos) {
   let img = document.createElement("img");
   let imgSrc = imageType(type);
   img.src = `${window.location.origin}/images/${imgSrc}.png`
   img.alt = `${type}`
+  img.id = `${pos}`;
   
   img.style.display = "block";
   img.style.margin = "0 auto";

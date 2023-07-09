@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, nextPositions, checkMate, otherPlayerMoves, checkCastle, castling } from '../../moves/helperFunctions.js';
-import WindowSizeListener from 'react-window-size-listener';
 import { useSnackbar } from 'notistack';
 import styles from "./Board.module.css";
 import Button from "@mui/material/Button";
@@ -8,11 +7,9 @@ import { Typography } from '@mui/material';
 
 export default function Board({ room, socket, color, start, position, beginning }) {
   const BOARD_SIZE = 8;
-  const SIZE = 70;
   const square = [];
   
   const [curPos, setCurPos] = useState(position);
-  const [offset, setOffset] = useState();
   const [valid, setValid] = useState([]);
   
   const [type, setType] = useState();
@@ -35,7 +32,6 @@ export default function Board({ room, socket, color, start, position, beginning 
   const board = square.map(_ => square);
 
   useEffect(() => {
-    setOffset(document.getElementById("board").getBoundingClientRect());
     startGame(position);
   }, [position])
 
@@ -70,9 +66,7 @@ export default function Board({ room, socket, color, start, position, beginning 
   const pieceMovement = (e) => {
     e.preventDefault();
     if (game === "play") {
-      let x = Math.ceil((e.pageX - offset.left) / SIZE);
-      let y = Math.ceil((e.pageY - offset.top) / SIZE);
-      let pos = (y - 1) * 8 + x;
+      let pos = Number(e.target.id);
       let row = Math.floor(pos / 8);
       let col = (pos - (row * 8) - 1);
 
@@ -154,26 +148,22 @@ export default function Board({ room, socket, color, start, position, beginning 
 
   return (
     <>
-      <WindowSizeListener onResize={() => {
-        setOffset(document.getElementById("board").getBoundingClientRect());
-      }}>
-        <Typography>Code: {`${room}`}  -  Color: {`${color[0].toUpperCase() + color.substr(1)}`}  -  <span id="active">Status: Active</span></Typography>
-        <Button size="small" color="error" onClick={leaveGame}>Leave</Button>
-        <div id="board" onClick={e => pieceMovement(e)}>
-          {board.map((_, idx) => {
-            return (
-              <div className={styles.row} key={idx}>
-                {square.map((cell, id) => {
-                  const pos = idx * BOARD_SIZE + cell;
-                  return (
-                    <div className={(idx + id + 2) % 2 === 0 ? `${styles.cell} ${styles.even}` : `${styles.cell} ${styles.odd}`} key={String(pos) + "a"} id={String(pos)}></div>
-                  )
-                })}
-              </div>
-            )
-          })}
-        </div>
-      </WindowSizeListener>
+      <Typography>Code: {`${room}`}  -  Color: {`${color[0].toUpperCase() + color.substr(1)}`}  -  <span id="active">Status: Active</span></Typography>
+      <Button size="small" color="error" onClick={leaveGame}>Leave</Button>
+      <div id="board" onClick={e => pieceMovement(e)}>
+        {board.map((_, idx) => {
+          return (
+            <div className={styles.row} key={idx}>
+              {square.map((cell, id) => {
+                const pos = idx * BOARD_SIZE + cell;
+                return (
+                  <div className={(idx + id + 2) % 2 === 0 ? `${styles.cell} ${styles.even}` : `${styles.cell} ${styles.odd}`} key={String(pos) + "a"} id={String(pos)}></div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
     </>
   )
 }
