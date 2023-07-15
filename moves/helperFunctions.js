@@ -479,6 +479,9 @@ function drawImage(type, pos) {
   
   img.style.display = "block";
   img.style.margin = "0 auto";
+
+  img.style.maxWidth = "100%";
+  img.style.height = "auto";
   
   img.style.position = "relative";
   img.style.top = "45%";

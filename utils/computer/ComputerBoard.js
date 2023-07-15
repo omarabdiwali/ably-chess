@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, nextPositions, otherPlayerMoves, checkCastle, castling, checkMate } from "@/moves/helperFunctions";
 import { useSnackbar } from 'notistack';
 import styles from "../board/Board.module.css";
@@ -29,6 +29,8 @@ export default function ComputerBoard({position}) {
   const [blCastle, setBLCastle] = useState(true);
   const [brCastle, setBRCastle] = useState(true);
 
+  const [cellSize, setCellSize] = useState(1);
+
   const [passedMoves, setPassedMoves] = useState({});
 
   const { enqueueSnackbar } = useSnackbar();
@@ -38,9 +40,21 @@ export default function ComputerBoard({position}) {
   }
   const board = square.map(_ => square);
 
+  const changeLayout = useCallback(e => {
+    setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
+  })
+
   useEffect(() => {
+    setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
     startGame(position);
   }, [position])
+
+  useEffect(() => {
+    window.addEventListener("resize", changeLayout);
+    return () => {
+      window.addEventListener("resize", changeLayout);
+    }
+  }, [changeLayout])
 
   const computerMove = () => {
     let move = minimaxRoot(1, curPos, true, bCastle, blCastle, brCastle, passedMoves);
@@ -180,11 +194,11 @@ export default function ComputerBoard({position}) {
       <div id="board" onClick={e => pieceMovement(e)}>
         {board.map((_, idx) => {
           return (
-            <div className={styles.row} key={idx}>
+            <div className={cellSize == 1 ? styles.row : cellSize == 2 ? styles.smRow : styles.xsRow} key={idx}>
               {square.map((cell, id) => {
                 const pos = idx * BOARD_SIZE + cell;
                 return (
-                  <div className={(idx + id + 2) % 2 === 0 ? `${styles.cell} ${styles.even}` : `${styles.cell} ${styles.odd}`} key={String(pos) + "a"} id={String(pos)}></div>
+                  <div className={(idx + id + 2) % 2 === 0 ? `${cellSize == 1 ? styles.cell : cellSize == 2 ? styles.smCell : styles.xsCell} ${styles.even}` : `${cellSize == 1 ? styles.cell : cellSize == 2 ? styles.smCell : styles.xsCell} ${styles.odd}`} key={String(pos) + "a"} id={String(pos)}></div>
                 )
               })}
             </div>

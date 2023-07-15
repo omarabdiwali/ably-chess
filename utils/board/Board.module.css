@@ -8,6 +8,26 @@
   height: 70px;
 }
 
+.smCell {
+  width: 45px;
+  height: 45px;
+  display: inline-block;
+}
+
+.smRow {
+  height: 45px;
+}
+
+.xsCell {
+  width: 30px;
+  height: 30px;
+  display: inline-block;
+}
+
+.xsRow {
+  height: 30px;
+}
+
 .even {
   background-color: rgba(238, 216, 192, 1);
 }
