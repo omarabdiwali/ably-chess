@@ -52,7 +52,7 @@ export default function ComputerBoard({position}) {
   useEffect(() => {
     window.addEventListener("resize", changeLayout);
     return () => {
-      window.addEventListener("resize", changeLayout);
+      window.removeEventListener("resize", changeLayout);
     }
   }, [changeLayout])
 

@@ -45,7 +45,7 @@ export default function Board({ room, socket, color, start, position, beginning 
   useEffect(() => {
     window.addEventListener("resize", changeLayout);
     return () => {
-      window.addEventListener("resize", changeLayout);
+      window.removeEventListener("resize", changeLayout);
     }
   }, [changeLayout])
 
