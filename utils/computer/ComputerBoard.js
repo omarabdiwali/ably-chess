@@ -133,7 +133,7 @@ export default function ComputerBoard({position}) {
           }
           if (rCastle) {
             setRCastle(resp[2])
-          } 
+          }
           if (!lCastle && !rCastle) {
             setCastle(false);
           }
@@ -152,7 +152,7 @@ export default function ComputerBoard({position}) {
 
         if (checkmate) {
           setGame("end");
-          document.getElementById("active").innerHTML = "Status: " +  winner;
+          document.getElementById("active").innerHTML = "Status: " + winner;
           return;
         }
         else {
@@ -163,25 +163,22 @@ export default function ComputerBoard({position}) {
       else {
         let positions = [prevPos, ...valid];
         let types = curPos[pos];
-        if (turn) {
-          if (types) {
-            if (types[0] === "w") {
-              let valid = getValidMoves(types, pos, curPos);
-              valid = nextPositions(curPos, valid, "white", pos, types);
-              if (types.includes("King")) {
-                let mayb = castling(castle, types, curPos, "white", lCastle, rCastle);
-                valid = valid.concat(mayb);
-              }
-              if (valid.length > 0) {
-                setType(types);
-                setValid(valid);
-                clearColors(positions);
-                colorSquare(pos, col, row);
-                colorValid(valid);
-                setPrevPos(pos);
-              }
-            }
-          }
+
+        if (!turn || !types || types[0] !== "w") return;
+
+        let curValid = getValidMoves(types, pos, curPos);
+        curValid = nextPositions(curPos, curValid, "white", pos, types);
+        if (types.includes("King")) {
+          let mayb = castling(castle, types, curPos, "white", lCastle, rCastle);
+          curValid = curValid.concat(mayb);
+        }
+        if (curValid.length > 0) {
+          setType(types);
+          setValid(curValid);
+          clearColors(positions);
+          colorSquare(pos, col, row);
+          colorValid(curValid);
+          setPrevPos(pos);
         }
       }
     }
@@ -198,7 +195,7 @@ export default function ComputerBoard({position}) {
               {square.map((cell, id) => {
                 const pos = idx * BOARD_SIZE + cell;
                 return (
-                  <div className={(idx + id + 2) % 2 === 0 ? `${cellSize == 1 ? styles.cell : cellSize == 2 ? styles.smCell : styles.xsCell} ${styles.even}` : `${cellSize == 1 ? styles.cell : cellSize == 2 ? styles.smCell : styles.xsCell} ${styles.odd}`} key={String(pos) + "a"} id={String(pos)}></div>
+                  <div className={`${cellSize == 1 ? styles.cell : cellSize == 2 ? styles.smCell : styles.xsCell} ${(idx + id + 2) % 2 === 0 ? styles.even : styles.odd }`} key={String(pos) + "a"} id={String(pos)}></div>
                 )
               })}
             </div>
