@@ -98,7 +98,7 @@ export default function Board({ room, socket, color, start, position, beginning 
       setGame("end");
       document.getElementById("active").innerHTML = "Status: " +  winner;
     })
-  }, [socket])
+  }, [socket, playCapture, playCastle, playCheck, playEnd, playOtherMove, playPromotion])
 
   const leaveGame = () => {
     enqueueSnackbar("Goodbye!", { autoHideDuration: 3000, variant: "success" });
