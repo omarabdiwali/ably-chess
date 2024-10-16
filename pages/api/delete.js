@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   let user = await Rooms.findOne(query).exec();
 
   if (user && users === 0) {
-    Rooms.findOneAndRemove(query).catch(err => console.error(err));
+    Rooms.findOneAndDelete(query).catch(err => console.error(err));
   }
 
   else if (users === 1) {
