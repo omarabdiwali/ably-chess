@@ -191,7 +191,9 @@ const countMaterial = (position, color) => {
   }
 
  if (color === "b" && numOfColorPieces(position, "w") <= 4) {
-    score += forceKingEngame(position, "bKing", "wKing");
+    score += forceKingEndgame(position, "bKing", "wKing");
+  } else if (numOfColorPieces(position, "b") <= 4) {
+    score += forceKingEndgame(position, "wKing", "bKing");
   }
 
   return score;
@@ -423,7 +425,7 @@ const PieceFile = (pos) => {
 }
 
 /** Forces the king to the corners in engame scenarios. */
-const forceKingEngame = (position, friendly, opponent) => {
+const forceKingEndgame = (position, friendly, opponent) => {
   let evaluation = 0;
   let oppKing = piecePos(position, opponent);
 

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, nextPositions, checkMate, otherPlayerMoves, checkCastle, castling } from '../../moves/helperFunctions.js';
+import { getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, nextPositions, checkMate, otherPlayerMoves, checkCastle, castling, checked } from '../../moves/helperFunctions.js';
 import { useSnackbar } from 'notistack';
 import styles from "./Board.module.css";
 import Button from "@mui/material/Button";
 import { Typography } from '@mui/material';
+import useSound from 'use-sound';
 
 export default function Board({ room, socket, color, start, position, beginning }) {
   const BOARD_SIZE = 8;
@@ -23,8 +24,17 @@ export default function Board({ room, socket, color, start, position, beginning 
   const [castle, setCastle] = useState(true);
   const [lCastle, setLCastle] = useState(true);
   const [rCastle, setRCastle] = useState(true);
-
   const [cellSize, setCellSize] = useState(1);
+  
+  const soundsPath = `${window.location.origin}/sounds`;
+
+  const [playCheck] = useSound(`${soundsPath}/check.mp3`);
+  const [playMove] = useSound(`${soundsPath}/move-self.mp3`);
+  const [playOtherMove] = useSound(`${soundsPath}/move-opponent.mp3`);
+  const [playPromotion] = useSound(`${soundsPath}/promote.mp3`);
+  const [playCastle] = useSound(`${soundsPath}/castle.mp3`);
+  const [playCapture] = useSound(`${soundsPath}/capture.mp3`);
+  const [playEnd] = useSound(`${soundsPath}/game-end.mp3`);
 
   const { enqueueSnackbar } = useSnackbar();
 
@@ -52,21 +62,39 @@ export default function Board({ room, socket, color, start, position, beginning 
   useEffect(() => {    
     socket.on('pieces', (pieces) => {
       pieces = JSON.parse(pieces);
-      let newPos = otherPlayerMoves(pieces.pieces, parseInt(pieces.prev), parseInt(pieces.current));
+      
+      let fromPos = parseInt(pieces.prev);
+      let toPos = parseInt(pieces.current);
+      let newPiece = pieces.pieces[toPos];
+
+      if (pieces.isChecked) {
+        playCheck();
+      } else if (pieces.fromPiece.includes("King") && Math.abs(fromPos - toPos) == 2) {
+        playCastle();
+      } else if (pieces.fromPiece != newPiece) {
+        playPromotion();
+      } else if (pieces.toPiece) {
+        playCapture();
+      } else {
+        playOtherMove();
+      }
+
+      let newPos = otherPlayerMoves(pieces.pieces, fromPos, toPos);
       setCurPos(newPos);
-      setPrevOther(parseInt(pieces.prev));
-      setCurOther(parseInt(pieces.current));
+      setPrevOther(fromPos);
+      setCurOther(toPos);
       setTurn(true);
     })
     socket.on('delete', () => {
-      document.getElementById("active").innerHTML = "Status: Player disconnected.";
       setGame("end");
+      document.getElementById("active").innerHTML = "Status: Player disconnected.";
     })
     socket.on('start', () => {
       setGame("play");
       document.getElementById("active").innerHTML = "Status: Active";
     })
     socket.on('game', (winner) => {
+      playEnd();
       setGame("end");
       document.getElementById("active").innerHTML = "Status: " +  winner;
     })
@@ -87,6 +115,8 @@ export default function Board({ room, socket, color, start, position, beginning 
       if (valid.includes(pos)) {
         let positions = [prevPos, ...valid];
         let next = color === "white" ? "black" : "white";
+        let fromPiece = curPos[prevPos];
+        let toPiece = curPos[pos];
         let updCurPos;
 
         if (pos % 8 === 0) {
@@ -114,6 +144,21 @@ export default function Board({ room, socket, color, start, position, beginning 
             setCastle(false);
           }
         }
+
+        let newPiece = updCurPos[pos];
+        let isChecked = checked(next, updCurPos);
+        
+        if (isChecked) {
+          playCheck();
+        } else if (fromPiece.includes("King") && Math.abs(pos - prevPos) == 2) {
+          playCastle();
+        } else if (fromPiece != newPiece) {
+          playPromotion();
+        } else if (toPiece) {
+          playCapture();
+        } else {
+          playMove();
+        }
         
         setValid([]);
         setType("");
@@ -122,13 +167,14 @@ export default function Board({ room, socket, color, start, position, beginning 
         setTurn(false);
         clearColors([prevOtherPos, curOtherPos]);
 
-        socket.emit('pieces', JSON.stringify({ pieces: updCurPos, prev: prevPos, current: pos, turn: next }));
+        socket.emit('pieces', JSON.stringify({ pieces: updCurPos, fromPiece, toPiece, prev: prevPos, current: pos, isChecked, turn: next }));
 
         let finished = checkMate(next, curPos);
         let checkmate = finished[0];
         let winner = finished[1];
 
         if (checkmate) {
+          playEnd();
           setGame("end");
           document.getElementById("active").innerHTML = "Status: " +  winner;
           socket.emit('game', (winner));

@@ -454,7 +454,7 @@ function movedSquares(row, col) {
 }
 
 /** Checks if the move puts you in check. */
-function checked(next, positions) {
+export function checked(next, positions) {
   let turn = next === "white" ? "b" : "w";
   let valid = [];
   let king = next[0] + "King";

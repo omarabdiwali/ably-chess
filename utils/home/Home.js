@@ -83,7 +83,8 @@ export default function HomePage() {
     }).catch(err => console.error(err))
   }
 
-  const joinRoom = () => {    
+  const joinRoom = (e) => {
+    e.preventDefault();
     if (room === "" || isNaN(parseInt(room)) || room.length !== 6) {
       enqueueSnackbar("Invalid Code", { autoHideDuration: 3000, variant: "error" });
       return;
@@ -140,8 +141,10 @@ export default function HomePage() {
           <Card className={styles.card} variant="outlined">
             <CardContent>
               <Typography className={styles.room} style={{ margin: "4%" }} variant="h5" component="h2" gutterBottom>Room code</Typography>
-              <TextField autoFocus style={{marginTop: "10%"}} variant="outlined" size="small" id="input" value={room} onChange={e => onChange(e)}></TextField>
-              <Button style={{ marginLeft: "4%", marginTop: "10.5%" }} variant="contained" color="primary" id="join" onClick={joinRoom}>Join</Button>
+              <form onSubmit={joinRoom}>
+                <TextField autoFocus style={{marginTop: "10%"}} variant="outlined" size="small" id="input" value={room} onChange={e => onChange(e)}></TextField>
+                <Button style={{ marginLeft: "4%", marginTop: "10.5%" }} variant="contained" color="primary" id="join" onClick={joinRoom}>Join</Button>
+              </form>
               <Typography style={{marginTop: "3%"}}>Play with computer:<Button onClick={computerPlay}>Play</Button></Typography>
             </CardContent>
             <CardActions>

@@ -60,9 +60,7 @@ export default function rook(col, pos, currPositions) {
       end = false;
     }
 
-    if (end) {
-      run = false;
-    }
+    run = !end;
   }
   return validPos;
 }
