@@ -14,7 +14,7 @@ All of the functions were written by me, including the logic for the pieces, whe
 ![Home Page](https://i.imgur.com/5Rt2CNJ.png)
 
 
-![Vaild movements](https://i.imgur.com/vEN0Ubp.png)
+![Vaild movements](https://i.imgur.com/e6RfRXX.png)
 
 
 ![Checkmate](https://i.imgur.com/EtfZaua.png)
