@@ -6,7 +6,7 @@ import Button from "@mui/material/Button";
 import { Typography } from '@mui/material';
 import useSound from 'use-sound';
 
-export default function Board({ room, socket, color, start, position, beginning }) {
+export default function Board({ room, socket, color, start, position, beginning, info }) {
   const BOARD_SIZE = 8;
   const square = [];
   
@@ -209,7 +209,7 @@ export default function Board({ room, socket, color, start, position, beginning 
 
   return (
     <>
-      <Typography>Code: {`${room}`}  -  Color: {`${color[0].toUpperCase() + color.substr(1)}`}  -  <span id="active">Status: Active</span></Typography>
+      <Typography>Code: {`${room}`}  -  Color: {`${color[0].toUpperCase() + color.substr(1)}`}  -  <span id="active">{info}</span></Typography>
       <Button size="small" color="error" onClick={leaveGame}>Leave</Button>
       <div id="board" onClick={e => pieceMovement(e)}>
         {board.map((_, idx) => {

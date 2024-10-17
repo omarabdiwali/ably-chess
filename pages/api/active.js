@@ -30,6 +30,10 @@ export default async function handler(req, res) {
         user.users = 2;
       }
 
+      if (user.public && user.users == 2) {
+        user.public = false;
+      }
+
       user.save();
       
       position = JSON.parse(user.position);

@@ -174,6 +174,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       let rRow = Math.floor(62 / 8);
       let rCol = (62 - (rRow * 8) - 1);
 
+      clearSquare(62);
       clearSquare(64);
   
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
@@ -188,6 +189,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       let rCol = (60 - (rRow * 8) - 1);
       
       clearSquare(57);
+      clearSquare(60);
 
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
       let piece = drawImage("wRook 1", 60);
@@ -200,6 +202,7 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
       let rRow = Math.floor(6 / 8);
       let rCol = (6 - (rRow * 8) - 1);
 
+      clearSquare(6);
       clearSquare(8);
   
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
@@ -212,7 +215,9 @@ export function updateCurPositions(type, row, col, pos, curPos, prevPos, castle 
     else if (type === "bKing" && prevPos === 5 && pos === 3 && lCastle) {
       let rRow = Math.floor(4 / 8);
       let rCol = (4 - (rRow * 8) - 1);
+      
       clearSquare(1);
+      clearSquare(4);
   
       let square = document.getElementById("board").childNodes.item(`${rRow}`).children[rCol];
       let piece = drawImage("bRook 1", 4);
