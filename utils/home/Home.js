@@ -53,7 +53,7 @@ export default function HomePage() {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  const createRoom = (e, isPublic=false) => {
+  const createRoom = (e, isPublic=false, retries=0) => {
     e.preventDefault();
     setLoading(true);
     setDisabled(true);
@@ -75,7 +75,14 @@ export default function HomePage() {
           setTimeout(() => joinRoom(e, data.code, data.color, data.created), 100);
         }
         else {
-          createRoom();
+          if (retries < 3) {
+            createRoom(e, isPublic, retries + 1);
+          }
+          else {
+            enqueueSnackbar("Error creating a room!", { autoHideDuration: 3000, variant: "error" });
+            setLoading(false);
+            setDisabled(false);
+          }
         }
       }).catch(err => console.error(err))
   }
