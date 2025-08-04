@@ -13,14 +13,14 @@
     "@emotion/styled": "^11.13.0",
     "@mui/material": "^6.1.4",
     "mongoose": "^8.7.1",
+    "next": "^14.2.31",
     "node-fetch": "^3.3.2",
     "notistack": "^3.0.1",
-    "socket.io": "^4.8.0",
-    "socket.io-client": "^4.8.0",
-    "use-sound": "^4.0.3",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.15"
+    "socket.io": "^4.8.0",
+    "socket.io-client": "^4.8.0",
+    "use-sound": "^4.0.3"
   },
   "devDependencies": {
     "eslint": "^8",
