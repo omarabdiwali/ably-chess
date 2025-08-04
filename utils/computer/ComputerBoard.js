@@ -1,27 +1,32 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, nextPositions, otherPlayerMoves, checkCastle, castling, checkMate, checked } from "@/moves/helperFunctions";
+import { 
+  getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, 
+  nextPositions, otherPlayerMoves, checkCastle, castling, checkMate, checked, translateMove,
+  setEnPassant, clearEnPassant
+} from "@/moves/helperFunctions";
 import { useSnackbar } from 'notistack';
 import styles from "../board/Board.module.css";
-import { minimaxRoot } from './minimaxRec.js';
+import { minimaxRoot, posToFen } from './minimaxRec.js';
 import Button from "@mui/material/Button";
 import Typography from '@mui/material/Typography';
 import useSound from 'use-sound';
 
-export default function ComputerBoard({position}) {
+export default function ComputerBoard({ position, engine }) {
   const BOARD_SIZE = 8;
   const square = [];
-  
+
   const [curPos, setCurPos] = useState(position);
   const [valid, setValid] = useState([]);
-  
+  const [totalMoves, setTotalMoves] = useState(0);
+
   const [type, setType] = useState();
   const [prevPos, setPrevPos] = useState();
   const [game, setGame] = useState("play");
-  
+
   const [turn, setTurn] = useState(true);
   const [prevOtherPos, setPrevOther] = useState();
   const [curOtherPos, setCurOther] = useState();
-  
+
   const [castle, setCastle] = useState(true);
   const [lCastle, setLCastle] = useState(true);
   const [rCastle, setRCastle] = useState(true);
@@ -33,6 +38,8 @@ export default function ComputerBoard({position}) {
   const [cellSize, setCellSize] = useState(1);
 
   const [passedMoves, setPassedMoves] = useState({});
+  // En passant context: { targetPos, capturedPos, color } 
+  const [enPassant, setEP] = useState(null);
 
   const [playCheck] = useSound(`${window.location.origin}/sounds/check.mp3`);
   const [playMove] = useSound(`${window.location.origin}/sounds/move-self.mp3`);
@@ -51,11 +58,13 @@ export default function ComputerBoard({position}) {
 
   const changeLayout = useCallback(e => {
     setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
-  })
+  }, [])
 
   useEffect(() => {
     setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
     startGame(position);
+    setEP(null);
+    clearEnPassant();
   }, [position])
 
   useEffect(() => {
@@ -65,57 +74,119 @@ export default function ComputerBoard({position}) {
     }
   }, [changeLayout])
 
-  const computerMove = () => {
-    let move = minimaxRoot(1, curPos, true, bCastle, blCastle, brCastle, passedMoves);
-    setPassedMoves(move[1]);
-    
-    let piece = move[0][0], prevPos = move[0][2], nextPos = move[0][3];
-    let fromPiece = curPos[prevPos];
-    let toPiece = curPos[nextPos];
+  useEffect(() => {
+    if (turn) return;
+    computerMove();
+  }, [turn])
 
-    let boardCopy = JSON.stringify(curPos);
-    boardCopy = JSON.parse(boardCopy);
-    boardCopy[nextPos] = piece;
-    boardCopy[prevPos] = null;
-    
-    let position = otherPlayerMoves(boardCopy, prevPos, nextPos);
-    let newPiece = position[nextPos];
+  const fetchStockfishMove = async () => {
+    const fen = posToFen(curPos, "b", totalMoves, rCastle, lCastle, brCastle, blCastle);
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      }, 
+      body: JSON.stringify({ fen })
+    };
 
-    if (checked("white", position)) {
+    return await fetch("https://chess-api.com/v1", options)
+    .then(res => res.json()).then(data => {
+      return data;
+    })
+  }
+
+  const computerMove = async () => {
+    let data, piece, prevPosLocal, nextPosLocal, fromPiece, toPiece;
+
+    if (engine === "stockfish") {
+      data = await fetchStockfishMove();
+      prevPosLocal = translateMove(data.fromNumeric);
+      nextPosLocal = translateMove(data.toNumeric);
+      piece = curPos[prevPosLocal];
+      toPiece = curPos[nextPosLocal];
+    } else {
+      let move = minimaxRoot(1, curPos, true, bCastle, blCastle, brCastle, passedMoves, enPassant);
+      setPassedMoves(move[1]);
+      piece = move[0][0], prevPosLocal = move[0][2], nextPosLocal = move[0][3];
+      fromPiece = curPos[prevPosLocal];
+      toPiece = curPos[nextPosLocal];
+    }
+
+    let enPassantUsed = null;
+    if (piece && piece.includes("Pawn") && enPassant && nextPosLocal === enPassant.targetPos && !toPiece) {
+      enPassantUsed = enPassant;
+    }
+
+    let boardCopy = JSON.parse(JSON.stringify(curPos));
+    if (enPassantUsed) {
+      boardCopy[enPassantUsed.capturedPos] = null;
+    }
+    boardCopy[nextPosLocal] = piece;
+    boardCopy[prevPosLocal] = null;
+    let positionAfter = otherPlayerMoves(boardCopy, prevPosLocal, nextPosLocal);
+
+    let isCapture = engine === "stockfish" ? data.isCapture || !!enPassantUsed : (enPassantUsed ? true : toPiece != null);
+    let isCastle = engine === "stockfish" ? data.isCastling : fromPiece && fromPiece.includes("King") && Math.abs(nextPosLocal - prevPosLocal) == 2;
+    let isPromotion = engine === "stockfish" ? data.promotion : piece != positionAfter[nextPosLocal];
+
+    if (checked("white", positionAfter)) {
       playCheck();
-    } else if (fromPiece.includes("King") && Math.abs(nextPos - prevPos) == 2) {
+    } else if (isCastle) {
       playCastle();
-    } else if (fromPiece != newPiece) {
+    } else if (isPromotion) {
       playPromotion();
-    } else if (toPiece) {
+    } else if (isCapture) {
       playCapture();
     } else {
       playOtherMove();
     }
 
-    setCurPos(position);
-    setPrevOther(prevPos);
-    setCurOther(nextPos);
+    if (castle && (toPiece == "wRook 1" || toPiece == "wRook 2")) {
+      const resp = checkCastle(toPiece, lCastle, rCastle);
+      setCastle(resp[0]);
+      if (lCastle) setLCastle(resp[1])
+      if (rCastle) setRCastle(resp[2]) 
+      if (!lCastle && !rCastle) setCastle(false)
+    }
+
+    setTotalMoves(totalMoves => totalMoves + 1);
+    setCurPos(positionAfter);
+    setPrevOther(prevPosLocal);
+    setCurOther(nextPosLocal);
     setTurn(true);
 
     if (bCastle) {
       let resp = checkCastle(piece, blCastle, brCastle);
       setBCastle(resp[0]);
-      if (blCastle) {
-        setBLCastle(resp[1])
-      }
-      if (brCastle) {
-        setBRCastle(resp[2])
-      } 
-      if (!blCastle && !brCastle) {
-        setBCastle(false);
+      if (blCastle) setBLCastle(resp[1])
+      if (brCastle) setBRCastle(resp[2]) 
+      if (!blCastle && !brCastle) setBCastle(false)
+    }
+
+    let nextEP = null;
+    if (piece && piece.includes("Pawn")) {
+      const delta = nextPosLocal - prevPosLocal;
+      const isBlack = piece[0] === 'b';
+      const doublePush = (!isBlack && delta === -16) || (isBlack && delta === 16);
+      if (doublePush) {
+        const targetPos = isBlack ? (prevPosLocal + 8) : (prevPosLocal - 8);
+        const capturablePawnSquare = nextPosLocal;
+        nextEP = { targetPos, capturedPos: capturablePawnSquare, color: piece[0] };
       }
     }
 
-    let finished = checkMate("white", position);
-    let checkmate = finished[0];
-    let winner = finished[1];
+    setEP(nextEP);
+    if (nextEP) setEnPassant(nextEP); else clearEnPassant();
 
+    let checkmate = false, winner = "";
+    if (engine === "stockfish") {
+      checkmate = data.mate === -1;
+      winner = checkmate ? "Black Wins!" : "";
+    } else {
+      let finished = checkMate("white", positionAfter);
+      checkmate = finished[0];
+      winner = finished[1];
+    }
     if (checkmate) {
       playEnd();
       setGame("End");
@@ -146,26 +217,29 @@ export default function ComputerBoard({position}) {
           col = 7;
           row -= 1;
         }
-        
+
+        let enPassantUsed = null;
+        if (type.includes("Pawn") && enPassant && pos === enPassant.targetPos && !toPiece) {
+          enPassantUsed = enPassant;
+        }
+
         if (type.includes("King") && castle) {
-          updCurPos = updateCurPositions(type, row, col, pos, curPos, prevPos, true, lCastle, rCastle);
+          updCurPos = updateCurPositions(type, pos, curPos, prevPos, true, lCastle, rCastle, enPassantUsed);
         }
         else {
-          updCurPos = updateCurPositions(type, row, col, pos, curPos, prevPos);
+          updCurPos = updateCurPositions(type, pos, curPos, prevPos, false, false, false, enPassantUsed);
         }
-        
+
+        if (enPassantUsed) {
+          toPiece = "bPawn";
+        }
+
         if (castle) {
           let resp = checkCastle(type, lCastle, rCastle);
           setCastle(resp[0]);
-          if (lCastle) {
-            setLCastle(resp[1])
-          }
-          if (rCastle) {
-            setRCastle(resp[2])
-          }
-          if (!lCastle && !rCastle) {
-            setCastle(false);
-          }
+          if (lCastle) setLCastle(resp[1])
+          if (rCastle) setRCastle(resp[2])
+          if (!lCastle && !rCastle) setCastle(false)
         }
 
         let newPiece = updCurPos[pos];
@@ -176,19 +250,43 @@ export default function ComputerBoard({position}) {
           playCastle();
         } else if (fromPiece != newPiece) {
           playPromotion();
-        } else if (toPiece) {
+        } else if (toPiece || enPassantUsed) {
           playCapture();
         } else {
           playMove();
         }
-        
+
+        if (bCastle && (toPiece == "bRook 1" || toPiece == "bRook 2")) {
+          const resp = checkCastle(toPiece, blCastle, brCastle);
+          setBCastle(resp[0]);
+          if (blCastle) setBLCastle(resp[1])
+          if (brCastle) setBRCastle(resp[2])
+          if (!blCastle && !brCastle) setBCastle(false)
+        }
+
+        setTotalMoves(totalMoves + 1);
         setValid([]);
         setType("");
         clearColors(positions);
         setPrevPos(pos);
         clearColors([prevOtherPos, curOtherPos]);
         setCurPos(updCurPos);
-        
+
+        let nextEP = null;
+        if (fromPiece.includes('Pawn')) {
+          const delta = pos - prevPos;
+          const isWhite = fromPiece[0] === 'w';
+          const doublePush = (isWhite && delta === -16) || (!isWhite && delta === 16);
+          if (doublePush) {
+            const targetPos = isWhite ? (prevPos - 8) : (prevPos + 8);
+            const capturablePawnSquare = pos;
+            nextEP = { targetPos, capturedPos: capturablePawnSquare, color: fromPiece[0] };
+          }
+        }
+
+        setEP(nextEP);
+        if (nextEP) setEnPassant(nextEP); else clearEnPassant();
+
         let finished = checkMate(next, curPos);
         let checkmate = finished[0];
         let winner = finished[1];
@@ -201,7 +299,6 @@ export default function ComputerBoard({position}) {
         }
         else {
           setTurn(false);
-          computerMove();
         }
       }
       else {
@@ -210,8 +307,8 @@ export default function ComputerBoard({position}) {
 
         if (!turn || !types || types[0] !== "w") return;
 
-        let curValid = getValidMoves(types, pos, curPos);
-        curValid = nextPositions(curPos, curValid, "white", pos, types);
+        let curValid = getValidMoves(types, pos, curPos, enPassant);
+        curValid = nextPositions(curPos, curValid, "white", pos, types, enPassant);
         if (types.includes("King")) {
           let mayb = castling(castle, types, curPos, "white", lCastle, rCastle);
           curValid = curValid.concat(mayb);

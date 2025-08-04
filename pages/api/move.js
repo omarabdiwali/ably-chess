@@ -8,6 +8,6 @@ export default async function handler(req, res) {
 
   await dbConnect();
 
-  Rooms.findOneAndUpdate(query, data).catch(err => console.error(err));
+  await Rooms.findOneAndUpdate(query, data).catch(err => console.error(err));
   res.status(200).json({ message: "moved" });
 }

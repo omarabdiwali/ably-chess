@@ -9,11 +9,11 @@ export default async function handler(req, res) {
   let user = await Rooms.findOne(query).exec();
 
   if (user && users === 0) {
-    Rooms.findOneAndDelete(query).catch(err => console.error(err));
+    await Rooms.findOneAndDelete(query).catch(err => console.error(err));
   }
 
   else if (users === 1) {
-    Rooms.findOne(query).then(room => {
+    await Rooms.findOne(query).then(room => {
       room.users = 1;
       room.color = color === "White" ? ["Black"] : ["White"];
       room.save();

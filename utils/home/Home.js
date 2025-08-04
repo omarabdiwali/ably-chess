@@ -23,6 +23,7 @@ export default function HomePage() {
   const [created, setCreated] = useState(false);
   const [computer, setComputer] = useState(false);
   const [disabled, setDisabled] = useState(false);
+  const [engine, setEngine] = useState(null);
  
   const [turn, setTurn] = useState("");
   const [room, setRoom] = useState("");
@@ -72,7 +73,7 @@ export default function HomePage() {
           setColor(data.color);
           setCreated(data.created);
           setTurn("white");
-          setTimeout(() => joinRoom(e, data.code, data.color, data.created), 100);
+          joinRoom(e, data.code, data.color, data.created);
         }
         else {
           if (retries < 3) {
@@ -137,7 +138,6 @@ export default function HomePage() {
 
   const computerPlay = () => {
     setComputer(true);
-    enqueueSnackbar("Joined game!", { autoHideDuration: 3000, variant: "success" });
     setJoined(true);
   }
 
@@ -164,7 +164,22 @@ export default function HomePage() {
         </center>
         : (
           <div className={styles.App}>
-            {!computer ? <Board room={room} socket={socket} color={color.toLowerCase()} start={start} position={position} beginning={turn} info={info} /> : <ComputerBoard position={position} />}
+            {!computer ? 
+            <Board room={room} socket={socket} color={color.toLowerCase()} start={start} position={position} beginning={turn} info={info} /> : 
+            !engine ? 
+            <center>
+              <Card className={styles.card} variant="outlined">
+                <CardContent>
+                  <div>
+                    <Typography className={styles.room} style={{ margin: "4%"}} variant="h5" component="h2" gutterBottom>Select Chess Engine</Typography>
+                    <Button style={{marginTop: "7%"}} color='primary' onClick={() => setEngine("custom")}>Custom Engine (easy)</Button>
+                    <br></br>
+                    <Button style={{marginTop: "7%"}} color='primary' onClick={() => setEngine("stockfish")}>Stockfish</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </center> : <ComputerBoard engine={engine} position={position} />
+            }
           </div>
         )}
     </div>

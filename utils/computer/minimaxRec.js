@@ -213,7 +213,6 @@ export const minimaxRoot = (depth, position, turn, castle, lCastle, rCastle, pas
   let children = getChildren(position, turn, castle, lCastle, rCastle);
   let best = -Infinity;
   let bestMoveFound = [];
-  already = passedMoves;
 
   for (let i = 0; i < children.length; i++) {
     let move = children[i];
@@ -239,16 +238,9 @@ const minimaxRecursion = (position, depth, alpha, beta, turn, castle, lCastle, r
     return -evaluatePosition(position);
   }
 
-  let moves;
-  let fen = posToFen(position, turn);
+  let fen = posToFen(position, turn ? "w" : "b");
   let created = fen in already;
-
-  if (created) {
-    // console.log(fen);
-    moves = already[fen]
-  } else {
-    moves = getChildren(position, turn, castle, lCastle, rCastle);
-  }
+  let moves = created ? already[fen] : getChildren(position, turn, castle, lCastle, rCastle);
   
   if (moves.length === 0) {
     if (checkMate(turn ? "black" : "white", position)) {
@@ -272,7 +264,7 @@ const minimaxRecursion = (position, depth, alpha, beta, turn, castle, lCastle, r
       maxEval = Math.max(maxEval, evaluation);
       alpha = Math.max(alpha, evaluation);
       if (beta <= alpha) {
-        return maxEval;
+        break;
       }
     }
   
@@ -289,7 +281,7 @@ const minimaxRecursion = (position, depth, alpha, beta, turn, castle, lCastle, r
       minEval = Math.min(minEval, evaluation);
       beta = Math.min(beta, evaluation);
       if (beta <= alpha) {
-        return minEval;
+        break;
       }
     }
     
@@ -452,7 +444,7 @@ const forceKingEndgame = (position, friendly, opponent) => {
 }
 
 /** Takes the positions dictionary and turns it into a fen string. */
-export const posToFen = (position, turn) => {
+export const posToFen = (position, turn, totalMoves=null, wCastle=null, wCastle1=null, bCastle=null, bCastle1=null, enPassantPos=null) => {
   let fen = "";
   let count = 0;
 
@@ -503,9 +495,20 @@ export const posToFen = (position, turn) => {
   }
 
   fen = fen.substring(0, fen.length - 1);
+  fen += ` ${turn} `
 
-  if (turn) fen += " w ";
-  else fen += " b ";
+  if (wCastle || wCastle1 || bCastle || bCastle1) {
+    if (wCastle) fen += 'K'
+    if (wCastle1) fen += 'Q'
+    if (bCastle) fen += 'k'
+    if (bCastle1) fen += 'q'
+  } else {
+    fen += '-'
+  }
+
+  if (totalMoves != null) {
+    fen += ` ${enPassantPos ? idxToSquare(enPassantPos) : '-'} 0 ${totalMoves ? totalMoves : 1}`
+  }
 
   return fen;
 }

@@ -1,6 +1,6 @@
 # chess
 A online chess game created with React, Next.js, and Socket.io, with a MongoDB Cluster as a database.
-It is a chess board, available with all moves and rules, excluding en passant.
+It is a chess board, available with all moves and rules.
 
 A text input is given at the home page, where users can join a room with a code, or automatically create a room.
 These socket rooms only allow 2 people, and reconnection is available. Players are also able to join public games, where they are matched up to someone else who also chose the same option.

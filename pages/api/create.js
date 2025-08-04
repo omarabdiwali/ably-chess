@@ -23,14 +23,14 @@ export default async function handler(req, res) {
       publicRoom.save();
       res.status(200).json({ response, code: publicRoom.code, color, position: publicRoom.position, created });
     } else {
-      Rooms.create(data).catch(err => console.error(err));
+      await Rooms.create(data).catch(err => console.error(err));
       res.status(200).json({ response, code, color, position, created });
     }
   } 
   else {
     let user = await Rooms.findOne(query).exec();
     if (!user) {
-      Rooms.create(data).catch(err => console.error(err));
+      await Rooms.create(data).catch(err => console.error(err));
       response = "Room has been created.";
     }
     res.status(200).json({ response, color, position, code, created });
