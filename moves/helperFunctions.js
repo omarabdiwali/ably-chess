@@ -145,9 +145,26 @@ export function clearColors(pos) {
   }
 }
 
+function normalizePromotion(type, choice) {
+  if (!choice) return null;
+  const color = type[0] === 'w' ? 'w' : 'b';
+  const allowed = ['Queen','Rook','Bishop','Knight'];
+  if (!allowed.includes(choice)) return null;
+  return `${color}${choice}`;
+}
 
 /** Takes your move and updates the position. */
-export function updateCurPositions(type, pos, curPos, prevPos, castle = false, lCastle = false, rCastle = false, enPassantCtx = null) {
+export function updateCurPositions(
+  type,
+  pos,
+  curPos,
+  prevPos,
+  castle = false,
+  lCastle = false,
+  rCastle = false,
+  enPassantCtx = null,
+  promotionChoice = null
+) {
   let positions = curPos;
 
   clearSquare(prevPos);
@@ -159,10 +176,13 @@ export function updateCurPositions(type, pos, curPos, prevPos, castle = false, l
     positions[capturedSquare] = null;
   }
 
+  // Handle promotion using chosen piece if any
   if (type.includes("wPawn") && (pos >= 1 && pos <= 8)) {
-    type = "wQueen";
+    const newType = normalizePromotion(type, promotionChoice) || "wQueen";
+    type = newType;
   } else if (type.includes("bPawn") && (pos >= 57 && pos <= 64)) {
-    type = "bQueen";
+    const newType = normalizePromotion(type, promotionChoice) || "bQueen";
+    type = newType;
   }
 
   if (castle) {
@@ -476,7 +496,7 @@ function drawImage(type, pos) {
 }
 
 /** Clears the piece from the square. */
-function clearSquare(pos) {
+export function clearSquare(pos) {
   const { row, col } = posToRC(pos, window.__isBlackView);
   const sq = document.getElementById("board").childNodes.item(`${row}`).children[col];
   if (sq.firstChild) {
@@ -485,9 +505,8 @@ function clearSquare(pos) {
   }
 }
 
-
 /** Returns the image source. */
-function imageType(type) {
+export function imageType(type) {
   if (type.includes("Pawn")) {
     return type[0] === "b" ? "P" : "pL";
   }

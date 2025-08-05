@@ -10,6 +10,7 @@ import { minimaxRoot, posToFen } from './minimaxRec.js';
 import Button from "@mui/material/Button";
 import Typography from '@mui/material/Typography';
 import useSound from 'use-sound';
+import PromotionModal from '../components/PromotionModal';
 
 export default function ComputerBoard({ position, engine }) {
   const BOARD_SIZE = 8;
@@ -38,8 +39,9 @@ export default function ComputerBoard({ position, engine }) {
   const [cellSize, setCellSize] = useState(1);
 
   const [passedMoves, setPassedMoves] = useState({});
-  // En passant context: { targetPos, capturedPos, color } 
   const [enPassant, setEP] = useState(null);
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [pendingMove, setPendingMove] = useState(null); // { from, to, type, toPiece }
 
   const [playCheck] = useSound(`${window.location.origin}/sounds/check.mp3`);
   const [playMove] = useSound(`${window.location.origin}/sounds/move-self.mp3`);
@@ -55,6 +57,46 @@ export default function ComputerBoard({ position, engine }) {
     square.push(index);
   }
   const board = square.map(_ => square);
+
+  const isWhitePromotionMove = (pieceType, to) => {
+    if (!pieceType || !pieceType.includes('Pawn')) return false;
+    return to >= 1 && to <= 8;
+  };
+
+  const onChoosePromotion = (choice) => {
+    if (!pendingMove) return;
+    const { from, to, type: fromType, toPiece } = pendingMove;
+    let updCurPos = updateCurPositions(fromType, to, curPos, from, false, false, false, null, choice);
+    if (toPiece) playCapture(); else playPromotion();
+
+    setEP(null);
+    clearEnPassant();
+    setValid([]);
+    setType("");
+    clearColors([from, ...valid]);
+    setPrevPos(to);
+    clearColors([prevOtherPos, curOtherPos]);
+    setTurn(false);
+
+    const finished = checkMate("black", curPos);
+    const checkmate = finished[0];
+    const winner = finished[1];
+
+    if (checkmate) {
+      playEnd();
+      setGame("end");
+      document.getElementById("active").innerHTML = "Status: " + winner;
+    }
+
+    setCurPos(updCurPos);
+    setIsPromoting(false);
+    setPendingMove(null);
+  };
+
+  const cancelPromotion = () => {
+    setIsPromoting(false);
+    setPendingMove(null);
+  };
 
   const changeLayout = useCallback(e => {
     setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
@@ -95,6 +137,8 @@ export default function ComputerBoard({ position, engine }) {
     })
   }
 
+/* Replace the manual positionAfter construction in computerMove with updateCurPositions usage */
+
   const computerMove = async () => {
     let data, piece, prevPosLocal, nextPosLocal, fromPiece, toPiece;
 
@@ -107,7 +151,7 @@ export default function ComputerBoard({ position, engine }) {
     } else {
       let move = minimaxRoot(1, curPos, true, bCastle, blCastle, brCastle, passedMoves, enPassant);
       setPassedMoves(move[1]);
-      piece = move[0][0], prevPosLocal = move[0][2], nextPosLocal = move[0][3];
+      piece = move[0][0]; prevPosLocal = move[0][2]; nextPosLocal = move[0][3];
       fromPiece = curPos[prevPosLocal];
       toPiece = curPos[nextPosLocal];
     }
@@ -117,17 +161,35 @@ export default function ComputerBoard({ position, engine }) {
       enPassantUsed = enPassant;
     }
 
-    let boardCopy = JSON.parse(JSON.stringify(curPos));
-    if (enPassantUsed) {
-      boardCopy[enPassantUsed.capturedPos] = null;
-    }
-    boardCopy[nextPosLocal] = piece;
-    boardCopy[prevPosLocal] = null;
-    let positionAfter = otherPlayerMoves(boardCopy, prevPosLocal, nextPosLocal);
+    const isCastle = engine === "stockfish"
+      ? data.isCastling
+      : (fromPiece && fromPiece.includes("King") && Math.abs(nextPosLocal - prevPosLocal) === 2);
 
-    let isCapture = engine === "stockfish" ? data.isCapture || !!enPassantUsed : (enPassantUsed ? true : toPiece != null);
-    let isCastle = engine === "stockfish" ? data.isCastling : fromPiece && fromPiece.includes("King") && Math.abs(nextPosLocal - prevPosLocal) == 2;
-    let isPromotion = engine === "stockfish" ? data.promotion : piece != positionAfter[nextPosLocal];
+    // Determine promotion choice for black (engine), pass to updateCurPositions
+    let promotionChoice = null;
+    if (engine === "stockfish" && data.promotion) {
+      const map = { q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight' };
+      promotionChoice = map[String(data.promotion).toLowerCase()] || 'Queen';
+    }
+
+    // Apply the move using updateCurPositions (handles en passant, castling, promotion)
+    const positionAfter = updateCurPositions(
+      piece,
+      nextPosLocal,
+      JSON.parse(JSON.stringify(curPos)),
+      prevPosLocal,
+      isCastle,
+      blCastle, // black left castle flag
+      brCastle, // black right castle flag
+      enPassantUsed,
+      promotionChoice
+    );
+
+    // After move sound selection
+    const isCapture = engine === "stockfish" ? data.isCapture || !!enPassantUsed : (enPassantUsed ? true : toPiece != null);
+    const isPromotion = engine === "stockfish"
+      ? !!data.promotion
+      : (piece && piece.includes("Pawn") && (nextPosLocal >= 57 && nextPosLocal <= 64));
 
     if (checked("white", positionAfter)) {
       playCheck();
@@ -141,12 +203,12 @@ export default function ComputerBoard({ position, engine }) {
       playOtherMove();
     }
 
-    if (castle && (toPiece == "wRook 1" || toPiece == "wRook 2")) {
+    if (castle && (toPiece === "wRook 1" || toPiece === "wRook 2")) {
       const resp = checkCastle(toPiece, lCastle, rCastle);
       setCastle(resp[0]);
-      if (lCastle) setLCastle(resp[1])
-      if (rCastle) setRCastle(resp[2]) 
-      if (!lCastle && !rCastle) setCastle(false)
+      if (lCastle) setLCastle(resp[1]);
+      if (rCastle) setRCastle(resp[2]);
+      if (!lCastle && !rCastle) setCastle(false);
     }
 
     setTotalMoves(totalMoves => totalMoves + 1);
@@ -158,9 +220,9 @@ export default function ComputerBoard({ position, engine }) {
     if (bCastle) {
       let resp = checkCastle(piece, blCastle, brCastle);
       setBCastle(resp[0]);
-      if (blCastle) setBLCastle(resp[1])
-      if (brCastle) setBRCastle(resp[2]) 
-      if (!blCastle && !brCastle) setBCastle(false)
+      if (blCastle) setBLCastle(resp[1]);
+      if (brCastle) setBRCastle(resp[2]);
+      if (!blCastle && !brCastle) setBCastle(false);
     }
 
     let nextEP = null;
@@ -174,7 +236,6 @@ export default function ComputerBoard({ position, engine }) {
         nextEP = { targetPos, capturedPos: capturablePawnSquare, color: piece[0] };
       }
     }
-
     setEP(nextEP);
     if (nextEP) setEnPassant(nextEP); else clearEnPassant();
 
@@ -190,7 +251,7 @@ export default function ComputerBoard({ position, engine }) {
     if (checkmate) {
       playEnd();
       setGame("End");
-      document.getElementById("active").innerHTML = "Status: " +  winner;
+      document.getElementById("active").innerHTML = "Status: " + winner;
     }
   };
 
@@ -207,16 +268,19 @@ export default function ComputerBoard({ position, engine }) {
       let col = (pos - (row * 8) - 1);
 
       if (valid.includes(pos)) {
-        let positions = [prevPos, ...valid];
-        let next = "black";
-        let fromPiece = curPos[prevPos];
-        let toPiece = curPos[pos];
-        let updCurPos;
+        const positions = [prevPos, ...valid];
+        const next = "black";
+        const fromPiece = curPos[prevPos];
+        const toPiece = curPos[pos];
 
-        if (pos % 8 === 0) {
-          col = 7;
-          row -= 1;
+        if (isWhitePromotionMove(type, pos)) {
+          setIsPromoting(true);
+          setPendingMove({ from: prevPos, to: pos, type, toPiece });
+          clearColors(positions);
+          return;
         }
+
+        let updCurPos;
 
         let enPassantUsed = null;
         if (type.includes("Pawn") && enPassant && pos === enPassant.targetPos && !toPiece) {
@@ -225,31 +289,24 @@ export default function ComputerBoard({ position, engine }) {
 
         if (type.includes("King") && castle) {
           updCurPos = updateCurPositions(type, pos, curPos, prevPos, true, lCastle, rCastle, enPassantUsed);
-        }
-        else {
+        } else {
           updCurPos = updateCurPositions(type, pos, curPos, prevPos, false, false, false, enPassantUsed);
         }
 
-        if (enPassantUsed) {
-          toPiece = "bPawn";
-        }
-
         if (castle) {
-          let resp = checkCastle(type, lCastle, rCastle);
+          const resp = checkCastle(type, lCastle, rCastle);
           setCastle(resp[0]);
-          if (lCastle) setLCastle(resp[1])
-          if (rCastle) setRCastle(resp[2])
-          if (!lCastle && !rCastle) setCastle(false)
+          if (lCastle) setLCastle(resp[1]);
+          if (rCastle) setRCastle(resp[2]);
+          if (!lCastle && !rCastle) setCastle(false);
         }
 
-        let newPiece = updCurPos[pos];
+        const isCheckedNow = checked(next, updCurPos);
 
-        if (checked(next, updCurPos)) {
+        if (isCheckedNow) {
           playCheck();
         } else if (fromPiece.includes("King") && Math.abs(pos - prevPos) == 2) {
           playCastle();
-        } else if (fromPiece != newPiece) {
-          playPromotion();
         } else if (toPiece || enPassantUsed) {
           playCapture();
         } else {
@@ -283,24 +340,23 @@ export default function ComputerBoard({ position, engine }) {
             nextEP = { targetPos, capturedPos: capturablePawnSquare, color: fromPiece[0] };
           }
         }
-
         setEP(nextEP);
         if (nextEP) setEnPassant(nextEP); else clearEnPassant();
 
-        let finished = checkMate(next, curPos);
-        let checkmate = finished[0];
-        let winner = finished[1];
+        const finished = checkMate(next, curPos);
+        const checkmate = finished[0];
+        const winner = finished[1];
 
         if (checkmate) {
           playEnd();
           setGame("end");
           document.getElementById("active").innerHTML = "Status: " + winner;
           return;
-        }
-        else {
+        } else {
           setTurn(false);
         }
       }
+
       else {
         let positions = [prevPos, ...valid];
         let types = curPos[pos];
@@ -329,6 +385,12 @@ export default function ComputerBoard({ position, engine }) {
     <>
       <Typography id="active">Status: Active</Typography>
       <Button color="error" size="small" onClick={leaveGame}>Leave</Button>
+      <PromotionModal
+        open={isPromoting}
+        color="white"
+        onChoose={onChoosePromotion}
+        onCancel={cancelPromotion}
+      />
       <div id="board" onClick={e => pieceMovement(e)}>
         {board.map((_, idx) => {
           return (

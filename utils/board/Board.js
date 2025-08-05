@@ -1,32 +1,54 @@
 import { useEffect, useState, useCallback } from 'react';
-import { posToRC, getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, nextPositions, checkMate, otherPlayerMoves, checkCastle, castling, checked, setEnPassant, clearEnPassant } from '../../moves/helperFunctions.js';
+import {
+  posToRC,
+  getValidMoves,
+  colorValid,
+  clearColors,
+  updateCurPositions,
+  startGame,
+  colorSquare,
+  nextPositions,
+  checkMate,
+  otherPlayerMoves,
+  checkCastle,
+  castling,
+  checked,
+  setEnPassant,
+  clearEnPassant,
+  clearSquare,
+} from '../../moves/helperFunctions.js';
 import { useSnackbar } from 'notistack';
 import styles from "./Board.module.css";
 import Button from "@mui/material/Button";
 import { Typography } from '@mui/material';
 import useSound from 'use-sound';
+import PromotionModal from '../components/PromotionModal.js';
 
 export default function Board({ room, socket, color, start, position, beginning, info }) {
   const BOARD_SIZE = 8;
   const square = [];
-  
+
   const [curPos, setCurPos] = useState(position);
   const [valid, setValid] = useState([]);
-  
+
   const [type, setType] = useState();
   const [prevPos, setPrevPos] = useState();
   const [game, setGame] = useState(start);
-  
+
   const [turn, setTurn] = useState(color === beginning);
   const [prevOtherPos, setPrevOther] = useState();
   const [curOtherPos, setCurOther] = useState();
-  
+
   const [castle, setCastle] = useState(true);
   const [lCastle, setLCastle] = useState(true);
   const [rCastle, setRCastle] = useState(true);
   const [cellSize, setCellSize] = useState(1);
   const [enPassant, setEP] = useState(null); // { targetPos, capturedPos, color }
-  
+
+  // Promotion UI state
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [pendingMove, setPendingMove] = useState(null); // { from, to, type, toPiece }
+
   const soundsPath = `${window.location.origin}/sounds`;
 
   const [playCheck] = useSound(`${soundsPath}/check.mp3`);
@@ -66,7 +88,7 @@ export default function Board({ room, socket, color, start, position, beginning,
   useEffect(() => {    
     socket.on('pieces', (pieces) => {
       pieces = JSON.parse(pieces);
-      
+
       let fromPos = parseInt(pieces.prev);
       let toPos = parseInt(pieces.current);
       let newPiece = pieces.pieces[toPos];
@@ -77,6 +99,8 @@ export default function Board({ room, socket, color, start, position, beginning,
         playCheck();
       } else if (pieces.fromPiece.includes("King") && Math.abs(fromPos - toPos) == 2) {
         playCastle();
+      } else if (pieces.promotionChoice) {
+        playPromotion();
       } else if (pieces.fromPiece != newPiece) {
         playPromotion();
       } else if (pieces.toPiece || pieces.enPassantUsed) {
@@ -91,21 +115,16 @@ export default function Board({ room, socket, color, start, position, beginning,
       const isPawn = piece && piece.includes('Pawn');
       const epCtx = pieces.enPassantUsed || null;
 
-      // If opponent used en passant, epCtx will tell us what to remove
       if (epCtx && isPawn && toPos === epCtx.targetPos) {
         const cap = epCtx.capturedPos;
         const temp = { ...pieces.pieces };
-        const { row: cr, col: cc } = posToRC(cap, window.__isBlackView);
-        const capSq = document.getElementById("board").childNodes.item(`${cr}`).children[cc];
-        if (capSq.firstChild) capSq.removeChild(capSq.firstChild);
+        clearSquare(cap);
         temp[cap] = null;
-
-        newPos = updateCurPositions(piece, toPos, temp, fromPos, false, false, false, epCtx);
+        newPos = updateCurPositions(piece, toPos, temp, fromPos, false, false, false, epCtx, pieces.promotionChoice || null);
       } else {
         newPos = otherPlayerMoves(pieces.pieces, fromPos, toPos);
       }
 
-      // Set opponent's new en passant availability they advertise for our next move
       setEP(pieces.nextEnPassant || null);
       setEnPassant(pieces.nextEnPassant || null);
 
@@ -134,9 +153,73 @@ export default function Board({ room, socket, color, start, position, beginning,
     setInterval(window.location.reload(), 2000);
   }
 
-const pieceMovement = (e) => {
-  e.preventDefault();
-  if (game === "play") {
+  const isPromotionMove = (pieceType, to) => {
+    if (!pieceType || !pieceType.includes('Pawn')) return false;
+    const isWhite = pieceType[0] === 'w';
+    return (isWhite && (to >= 1 && to <= 8)) || (!isWhite && (to >= 57 && to <= 64));
+  }
+
+  // Called when user picks promotion piece
+  const onChoosePromotion = (choice) => {
+    if (!pendingMove) return;
+    const { from, to, type: fromType, toPiece } = pendingMove;
+
+    const next = color === "white" ? "black" : "white";
+    let updCurPos = updateCurPositions(fromType, to, curPos, from, false, false, false, null, choice);
+
+    // sounds
+    if (toPiece) playCapture(); else playPromotion();
+
+    // EP reset after move
+    setEP(null);
+    clearEnPassant();
+
+    setValid([]);
+    setType("");
+    clearColors([from, ...valid]);
+    setPrevPos(to);
+    setTurn(false);
+    clearColors([prevOtherPos, curOtherPos]);
+
+    socket.emit('pieces', JSON.stringify({
+      pieces: updCurPos,
+      fromPiece: fromType,
+      toPiece,
+      prev: from,
+      current: to,
+      isChecked: checked(next, updCurPos),
+      turn: next,
+      enPassantUsed: null,
+      nextEnPassant: null,
+      promotionChoice: choice
+    }));
+
+    const finished = checkMate(next, curPos);
+    const checkmate = finished[0];
+    const winner = finished[1];
+
+    if (checkmate) {
+      playEnd();
+      setGame("end");
+      document.getElementById("active").innerHTML = "Status: " + winner;
+      socket.emit('game', (winner));
+    }
+
+    setCurPos(updCurPos);
+    setIsPromoting(false);
+    setPendingMove(null);
+  }
+
+  const cancelPromotion = () => {
+    // if user cancels, just close dialog and do nothing; they can click again
+    setIsPromoting(false);
+    setPendingMove(null);
+  }
+
+  const pieceMovement = (e) => {
+    e.preventDefault();
+    if (game !== "play") return;
+
     const pos = Number(e.target.id);
 
     if (valid.includes(pos)) {
@@ -144,6 +227,16 @@ const pieceMovement = (e) => {
       const next = color === "white" ? "black" : "white";
       const fromPiece = curPos[prevPos];
       const toPiece = curPos[pos];
+
+      // If this is a pawn promotion square, prompt user instead of finalizing now
+      if (isPromotionMove(type, prevPos, pos)) {
+        setIsPromoting(true);
+        setPendingMove({ from: prevPos, to: pos, type, toPiece });
+        // Show color highlights cleared but keep selection
+        clearColors(positions);
+        return;
+      }
+
       let updCurPos;
 
       if (type.includes("King") && castle) {
@@ -175,8 +268,8 @@ const pieceMovement = (e) => {
         playMove();
       }
 
-      let enPassantUsed = null; // if we just captured en passant
-      let nextEnPassant = null; // if our move creates en passant for opponent
+      let enPassantUsed = null;
+      let nextEnPassant = null;
 
       if (type.includes('Pawn')) {
         const delta = pos - prevPos;
@@ -193,17 +286,14 @@ const pieceMovement = (e) => {
         }
       }
 
-      // After making a move, if we didn't use EP, clear current EP; only nextEnPassant survives to opponent
       if (!enPassantUsed) {
         setEP(null);
         clearEnPassant();
       } else {
-        // Else, consume it
         setEP(null);
         clearEnPassant();
       }
 
-      // Set next EP context for opponent both locally and in helper
       if (nextEnPassant) {
         setEP(nextEnPassant);
         setEnPassant(nextEnPassant);
@@ -228,9 +318,9 @@ const pieceMovement = (e) => {
         isChecked,
         turn: next,
         enPassantUsed,
-        nextEnPassant
+        nextEnPassant,
+        promotionChoice: null
       }));
-
 
       const finished = checkMate(next, curPos);
       const checkmate = finished[0];
@@ -252,7 +342,6 @@ const pieceMovement = (e) => {
       let curValid = getValidMoves(types, pos, curPos);
       curValid = nextPositions(curPos, curValid, color, pos, types, enPassant);
 
-
       if (types.includes("King")) {
         const mayb = castling(castle, types, curPos, color, lCastle, rCastle);
         curValid = curValid.concat(mayb);
@@ -268,12 +357,17 @@ const pieceMovement = (e) => {
       }
     }
   }
-}
 
   return (
     <>
       <Typography>Code: {`${room}`}  -  Color: {`${color[0].toUpperCase() + color.substr(1)}`}  -  <span id="active">{info}</span></Typography>
       <Button size="small" color="error" onClick={leaveGame}>Leave</Button>
+      <PromotionModal
+        open={isPromoting}
+        color={color}
+        onChoose={onChoosePromotion}
+        onCancel={cancelPromotion}
+      />
       <div id="board" onClick={e => pieceMovement(e)}>
         {Array.from({ length: BOARD_SIZE }).map((_, r) => {
           const uiRow = (color === 'black') ? (BOARD_SIZE - 1 - r) : r;
@@ -293,7 +387,7 @@ const pieceMovement = (e) => {
             </div>
           )
         })}
-    </div>
+      </div>
     </>
   )
 }
