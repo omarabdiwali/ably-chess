@@ -9,7 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import ComputerBoard from '../computer/ComputerBoard';
 import Board from '../board/Board';
 import styles from './Home.module.css';
-import { fenString } from '@/moves/helperFunctions';
+import { capitalize, fenString } from '@/moves/helperFunctions';
 import { useAbly } from '../ably/AblyProvider';
 
 // Default initial chess position
@@ -28,7 +28,7 @@ export default function HomePage() {
   const [color, setColor] = useState(''); // "white" or "black"
   const [turn, setTurn] = useState('white'); // starting turn
   const [position, setPosition] = useState(() => fenString(DEFAULT_FEN));
-  const [info, setInfo] = useState('Status: Active');
+  const [info, setInfo] = useState('Status: White Turn');
   const [startState, setStartState] = useState('end'); // "play" | "end"
 
   const { enqueueSnackbar } = useSnackbar();
@@ -76,18 +76,20 @@ export default function HomePage() {
 
       if (data && data.response === 'Joined the room!') {
         const assignedColor = data.color.toLowerCase();
+        const status = capitalize(data.turn, 'Active');
         setColor(assignedColor);
         setPosition(data.position);
         setTurn(data.turn);
         setStartState('play');
-        setInfo('Status: Active');
+        setInfo(`Status: ${status !== 'Active' ? `${status} Turn` : status}`);
 
         await ensureClient();
         const ch = await getChannel(code);
         await ensureAttached(ch);
         await presenceEnter({ room: code, color: assignedColor });
 
-        try { await safePublish(code, 'start', { by: assignedColor }); } catch {}
+        const payload = { by: assignedColor, turn: data.turn };
+        try { await safePublish(code, 'start', payload); } catch {}
         setJoined(true);
         enqueueSnackbar('Joined the room!', { autoHideDuration: 2500, variant: 'success' });
       } else {
@@ -133,8 +135,9 @@ export default function HomePage() {
 
         if (!data.created) {
           setStartState('play');
-          setInfo('Status: Active')
-          try { await safePublish(data.code, 'start', { by: assignedColor }); } catch {}
+          setInfo('Status: White Turn');
+          const payload = { by: assignedColor, turn: 'white' };
+          try { await safePublish(data.code, 'start', payload); } catch {}
           enqueueSnackbar('Joined the room!', { autoHideDuration: 2500, variant: 'success' });
         } else {
           try { await safePublish(data.code, 'info', { type: 'host-waiting', color: assignedColor }); } catch {}

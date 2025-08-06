@@ -15,6 +15,7 @@ import {
   setEnPassant,
   clearEnPassant,
   clearSquare,
+  capitalize,
 } from '../../moves/helperFunctions.js';
 import { useSnackbar } from 'notistack';
 import styles from "./Board.module.css";
@@ -43,7 +44,7 @@ export default function Board({ room, color, start, position, beginning, info })
   const [enPassant, setEP] = useState(null); // { targetPos, capturedPos, color }
   const [isPromoting, setIsPromoting] = useState(false);
   const [pendingMove, setPendingMove] = useState(null);
-  const [statusText, setStatusText] = useState(info || 'Status: Active');
+  const [statusText, setStatusText] = useState(info || 'Status: White Turn');
 
   const soundsPath = `${typeof window !== 'undefined' ? window.location.origin : ''}/sounds`;
   const [playCheck] = useSound(`${soundsPath}/check.mp3`);
@@ -133,18 +134,21 @@ export default function Board({ room, color, start, position, beginning, info })
           newPos = otherPlayerMoves(pieces.pieces, fromPos, toPos);
         }
 
+        const status = capitalize(color, 'Active');
         setEP(pieces.nextEnPassant || null);
         setEnPassant(pieces.nextEnPassant || null);
         setCurPos(newPos);
         setPrevOther(fromPos);
         setCurOther(toPos);
         setTurn(true);
+        setStatusText(`Status: ${status !== 'Active' ? `${status} Turn` : status}`);
       };
 
-      const onStart = () => {
+      const onStart = (msg) => {
         if (cancelled) return;
+        const status = capitalize(msg.data?.turn, 'Active');
         setGame('play');
-        setStatusText('Status: Active');
+        setStatusText(`Status: ${status !== 'Active' ? `${status} Turn` : status}`);
       };
 
       const onGameEnd = (msg) => {
@@ -155,6 +159,7 @@ export default function Board({ room, color, start, position, beginning, info })
       };
 
       const onDelete = (msg) => {
+        if (cancelled) return;
         setGame('end');
         setStatusText(`Status: Player disconnected`);
       }
@@ -171,6 +176,7 @@ export default function Board({ room, color, start, position, beginning, info })
           ch.unsubscribe('pieces', onPieces);
           ch.unsubscribe('start', onStart);
           ch.unsubscribe('game', onGameEnd);
+          ch.unsubscribe('delete', onDelete);
         } catch {}
         try { ch.presence.leave({ color }).catch(() => {}); } catch {}
       };
@@ -366,6 +372,9 @@ export default function Board({ room, color, start, position, beginning, info })
         setStatusText(`Status: ${winner}`);
         publishGame(winner);
         return;
+      } else {
+        const status = capitalize(next, 'Active');
+        setStatusText(`Status: ${status !== 'Active' ? `${status} Turn` : status}`)
       }
 
       setCurPos(updCurPos);
@@ -394,16 +403,18 @@ export default function Board({ room, color, start, position, beginning, info })
   };
 
   // User initiated leave (button)
-  // const leaveGame = async () => {
-  //   enqueueSnackbar('Leaving game...', { autoHideDuration: 1200, variant: 'info' });
-  //   setTimeout(() => { if (typeof window !== 'undefined') window.location.reload(); }, 800);
-  // };
+  const leaveGame = async () => {
+    const payload = { room, color, at: Date.now() };
+    enqueueSnackbar('Leaving game...', { autoHideDuration: 3000, variant: 'info' });
+    await safePublish(room, 'delete', payload);
+    setTimeout(window.location.reload(), 2000);
+  };
 
   // Render ------------------------------------------------------------------------------
   return (
     <>
-      <Typography className={styles.info}>Code: {room}  -  Color: {color[0].toUpperCase() + color.slice(1)}  -  <span id="active">{statusText}</span></Typography>
-      {/* <Button size="small" color="error" onClick={leaveGame}>Leave</Button> */}
+      <Typography>Code: {room}  -  Color: {capitalize(color)}  -  <span id="active">{statusText}</span></Typography>
+      <Button size="small" color="error" onClick={leaveGame}>Leave</Button>
       <PromotionModal
         open={isPromoting}
         color={color}

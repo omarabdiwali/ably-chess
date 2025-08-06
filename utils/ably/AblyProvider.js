@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { getAblyClient } from '../ablyClient';
+import { capitalize } from '@/moves/helperFunctions';
 
 const AblyContext = createContext(null);
 
@@ -178,18 +179,18 @@ export function AblyProvider({ children }) {
             await ch.publish('delete', payload);
             // logServer(`roomPublished "delete" to ${ch.name} payload=${JSON.stringify(payload)}`);
           } catch (e) {
-            logServer(`roomFailed to publish "delete" to room=${room}: ${e?.message || e}`);
+            // logServer(`roomFailed to publish "delete" to room=${room}: ${e?.message || e}`);
           }
         }
       } catch (e) {
-        logServer(`roomError preparing publish on beforeunload: ${e?.message || e}`);
+        // logServer(`roomError preparing publish on beforeunload: ${e?.message || e}`);
       }
 
       // Notify your server too (existing behavior)
       try {
         const payload = JSON.stringify({
           code: room,
-          color: color && color[0] ? color[0].toUpperCase() + color.slice(1) : color
+          color: capitalize(color)
         });
         if (navigator.sendBeacon) {
           const blob = new Blob([payload], { type: 'application/json' });
@@ -200,7 +201,7 @@ export function AblyProvider({ children }) {
           // logServer(`roomfetch /api/delete payload=${payload}`);
         }
       } catch {
-        logServer('roomError sending /api/delete on beforeunload');
+        logServer(`roomError sending /api/delete on beforeunload for room=${room}`);
       }
 
       try {

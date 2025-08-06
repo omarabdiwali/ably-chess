@@ -156,6 +156,9 @@ export default function ComputerBoard({ position, engine }) {
       toPiece = curPos[nextPosLocal];
     }
 
+    colorSquare(prevPosLocal);
+    colorSquare(nextPosLocal);
+
     let enPassantUsed = null;
     if (piece && piece.includes("Pawn") && enPassant && nextPosLocal === enPassant.targetPos && !toPiece) {
       enPassantUsed = enPassant;

@@ -11,6 +11,12 @@ let __enPassant = null; // { targetPos: number, capturedPos: number, color: 'w'|
 export function setEnPassant(ctx) { __enPassant = ctx; }
 export function clearEnPassant() { __enPassant = null; }
 
+/** Capitalizes the first letter of a string. */
+export function capitalize(string, defaultString='') {
+  if (typeof string !== 'string' || string.length == 0) return defaultString;
+  return string[0].toUpperCase() + string.substring(1);
+}
+
 /** Checks if the pieces are on the same team. */
 export function checkSamePiece(currPositions, pos, type) {
   let piece = currPositions[pos];
@@ -267,28 +273,38 @@ export function colorSquare(pos) {
 
 /** Checks if the game is at a checkmate. */
 export function checkMate(next, positions) {
-  let piecesOfColor = numOfColorPieces(positions, next[0]);
-  let count = 0;
-  if (piecesOfColor === 1 && numOfColorPieces(positions, next[0] === "w" ? "b" : "w") === 1) {
+  const color = next[0]; // 'w' or 'b'
+  const oppColor = color === 'w' ? 'b' : 'w';
+
+  const myPieces = Object.entries(positions).filter(
+    ([, piece]) => piece && piece[0] === color
+  );
+  const oppPieces = Object.entries(positions).filter(
+    ([, piece]) => piece && piece[0] === oppColor
+  );
+
+  if (myPieces.length === 1 && oppPieces.length === 1) {
     return [true, "Tie Game!"];
   }
-  for (let [pos, piece] of Object.entries(positions)) {
-    if (count < piecesOfColor) {
-      if (piece && piece[0] === next[0]) {
-        count += 1;
-        let moves = getValidMoves(piece, parseInt(pos), positions);
-        let acValid = nextPositions(positions, moves, next, parseInt(pos), piece);
-        if (acValid.length > 0) {
-          return [false, ""];
-        }
-      }
-    }
-    else {
-      if (next === "white") return [true, "Black Wins"];
-      else return [true, "White Wins"];
+
+  let anyMoves = false;
+  for (const [pos, piece] of myPieces) {
+    const moves = getValidMoves(piece, parseInt(pos), positions);
+    const acValid = nextPositions(positions, moves, next, parseInt(pos), piece);
+    if (acValid.length > 0) {
+      anyMoves = true;
+      break;
     }
   }
+
+  if (anyMoves) {
+    return [false, ""];
+  }
+
+  if (next === "white") return [true, "Black Wins"];
+  return [true, "White Wins"];
 }
+
 
 /** Gets the position after a move is made. */
 export function nextPositions(position, valid, next, pos, piece, enPassantCtx = null) {
