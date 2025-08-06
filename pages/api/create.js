@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   const { code, isPublic, position } = req.body;
   const color = Math.random() > 0.5 ? "White" : "Black";
   const query = { code: code };
-  const data = { code: code, users: 0, color: [color], position: JSON.stringify(position), turn: "white", public: isPublic };
+  const data = { code: code, users: 1, color: [color], position: JSON.stringify(position), turn: "white", public: isPublic };
   let created = true;
   let response = "";
 
@@ -18,6 +18,8 @@ export default async function handler(req, res) {
 
     if (publicRoom) {
       let color = publicRoom.color.includes("White") ? "Black" : "White";
+      publicRoom.users += 1;
+      publicRoom.color.push(color);
       publicRoom.public = false;
       created = false;
       publicRoom.save();

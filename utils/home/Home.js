@@ -1,187 +1,276 @@
-import { useState, useEffect } from 'react';
-import io from 'socket.io-client';
-import Board from '../board/Board';
-import { fenString } from '@/moves/helperFunctions';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSnackbar } from 'notistack';
-import styles from "./Home.module.css";
-
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import ComputerBoard from '../computer/ComputerBoard';
 import CircularProgress from '@mui/material/CircularProgress';
+import ComputerBoard from '../computer/ComputerBoard';
+import Board from '../board/Board';
+import styles from './Home.module.css';
+import { fenString } from '@/moves/helperFunctions';
+import { useAbly } from '../ably/AblyProvider';
 
-let socket;
-const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
-const positions = fenString(fen);
+// Default initial chess position
+const DEFAULT_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR';
 
 export default function HomePage() {
-  const [joined, setJoined] = useState(false);
+  // Basic UI states
   const [loading, setLoading] = useState(false);
-  const [created, setCreated] = useState(false);
-  const [computer, setComputer] = useState(false);
   const [disabled, setDisabled] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const [computer, setComputer] = useState(false);
   const [engine, setEngine] = useState(null);
- 
-  const [turn, setTurn] = useState("");
-  const [room, setRoom] = useState("");
-  const [color, setColor] = useState("");
-  const [start, setStart] = useState("end");
-  const [info, setInfo] = useState("Status: Active");
-  const [position, setPosition] = useState(positions);
-  
+
+  // Match metadata
+  const [room, setRoom] = useState('');
+  const [color, setColor] = useState(''); // "white" or "black"
+  const [turn, setTurn] = useState('white'); // starting turn
+  const [position, setPosition] = useState(() => fenString(DEFAULT_FEN));
+  const [info, setInfo] = useState('Status: Active');
+  const [startState, setStartState] = useState('end'); // "play" | "end"
+
   const { enqueueSnackbar } = useSnackbar();
 
-  const socketInitializer = () => {
-    fetch('/api/socket').catch(err => console.log(err));
-    socket = io();
-  }
+  // Ably from provider
+  const { ensureClient, getChannel, ensureAttached, safePublish, presenceEnter, presenceLeave, setPresenceMeta } = useAbly();
 
+  // Helpers -----------------------------------------------------------------------------
+
+  const normalizeCode = (txt) => (txt || '').replace(/\s+/g, '');
+
+  const onChangeRoomCode = (e) => {
+    e.preventDefault();
+    setRoom(normalizeCode(e.target.value));
+  };
+
+  const randomCode6 = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+  // When page state changes, inform provider for disconnect handling
   useEffect(() => {
-    socketInitializer();
-  }, [])
+    setPresenceMeta({ joined, computer, room, color });
+  }, [joined, computer, room, color, setPresenceMeta]);
 
-  const onChange = (e) => {
+  // Public join/create/enter logic -------------------------------------------------------
+
+  const joinRoom = useCallback(async (e) => {
     e.preventDefault();
-    let roomVal = e.target.value;
-    roomVal = roomVal.replace(/ /i, "");
-    setRoom(roomVal);
-  }
 
-  const getRandomCode = () => {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  const createRoom = (e, isPublic=false, retries=0) => {
-    e.preventDefault();
-    setLoading(true);
-    setDisabled(true);
-    let randomCode = getRandomCode();
-
-    fetch(`/api/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ code: randomCode, isPublic: isPublic, position: position })
-    }).then(res => res.json())
-      .then(data => {
-        if (data.response === "Room has been created.") {
-          setRoom(data.code);
-          setColor(data.color);
-          setCreated(data.created);
-          setTurn("white");
-          joinRoom(e, data.code, data.color, data.created);
-        }
-        else {
-          if (retries < 3) {
-            createRoom(e, isPublic, retries + 1);
-          }
-          else {
-            enqueueSnackbar("Error creating a room!", { autoHideDuration: 3000, variant: "error" });
-            setLoading(false);
-            setDisabled(false);
-          }
-        }
-      }).catch(err => console.error(err))
-  }
-
-  const joinRoom = (e, dataCode=null, dataColor=null, dataCreated=null) => {
-    e.preventDefault();
-    let roomCode = dataCode ?? room;
-    let playerColor = dataColor ?? color;
-    let playerCreated = dataCreated ?? created;
-
-    if (roomCode === "" || isNaN(parseInt(roomCode)) || roomCode.length !== 6) {
-      enqueueSnackbar("Invalid Code", { autoHideDuration: 3000, variant: "error" });
-      setDisabled(false);
-      setLoading(false);
+    const code = normalizeCode(room);
+    if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+      enqueueSnackbar('Invalid Code', { autoHideDuration: 2500, variant: 'error' });
       return;
     }
 
     setDisabled(true);
     setLoading(true);
 
-    fetch(`/api/active`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ code: roomCode, created: playerCreated })
-    }).then(res => res.json())
-      .then(data => {
-        if (data.response === "Joined the room!") {
-          let info = JSON.stringify({ room: roomCode, color: playerCreated ? playerColor : data.color });
-          socket.emit("joinRoom", (info));
-          if (!playerCreated) {
-            setColor(data.color);
-            setStart("play");
-            setPosition(data.position);
-            setTurn(data.turn);
-            socket.emit("start");
-          } else {
-            setInfo("Status: Waiting for player...");
-          }
-          setJoined(true);
-          setLoading(false);
-          enqueueSnackbar(data.response, { autoHideDuration: 3000, variant: "success" });
-        }
-        else {
-          enqueueSnackbar(data.response, { autoHideDuration: 3000, variant: "error" });
-          setDisabled(false);
-          setLoading(false);
-        }
-    }).catch(err => console.error(err))
-  }
+    try {
+      const resp = await fetch('/api/active', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+      const data = await resp.json();
 
-  const computerPlay = () => {
+      if (data && data.response === 'Joined the room!') {
+        const assignedColor = data.color.toLowerCase();
+        setColor(assignedColor);
+        setPosition(data.position);
+        setTurn(data.turn);
+        setStartState('play');
+        setInfo('Status: Active');
+
+        await ensureClient();
+        const ch = await getChannel(code);
+        await ensureAttached(ch);
+        await presenceEnter({ room: code, color: assignedColor });
+
+        try { await safePublish(code, 'start', { by: assignedColor }); } catch {}
+        setJoined(true);
+        enqueueSnackbar('Joined the room!', { autoHideDuration: 2500, variant: 'success' });
+      } else {
+        enqueueSnackbar(data?.response || 'Unable to join room', { autoHideDuration: 2500, variant: 'error' });
+      }
+    } catch {
+      enqueueSnackbar('Network error joining room.', { autoHideDuration: 2500, variant: 'error' });
+    } finally {
+      setLoading(false);
+      setDisabled(false);
+    }
+  }, [room, enqueueSnackbar, ensureClient, ensureAttached, presenceEnter, safePublish, getChannel]);
+
+  const createRoom = useCallback(async (e, isPublic = false) => {
+    e.preventDefault();
+    if (loading) return;
+
+    setDisabled(true);
+    setLoading(true);
+
+    const code = randomCode6();
+
+    try {
+      const resp = await fetch('/api/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, isPublic, position })
+      });
+      const data = await resp.json();
+
+      if (data && data.response === 'Room has been created.') {
+        const assignedColor = data.color.toLowerCase();
+        setRoom(data.code);
+        setColor(assignedColor);
+        setTurn('white');
+        setInfo('Status: Waiting for player...');
+        setStartState('end');
+
+        await ensureClient();
+        const ch = await getChannel(data.code);
+        await ensureAttached(ch);
+        await presenceEnter({ room: data.code, color: assignedColor });
+
+        if (!data.created) {
+          setStartState('play');
+          setInfo('Status: Active')
+          try { await safePublish(data.code, 'start', { by: assignedColor }); } catch {}
+          enqueueSnackbar('Joined the room!', { autoHideDuration: 2500, variant: 'success' });
+        } else {
+          try { await safePublish(data.code, 'info', { type: 'host-waiting', color: assignedColor }); } catch {}
+          enqueueSnackbar('Room created!', { autoHideDuration: 2500, variant: 'success' });
+        }
+
+        setJoined(true);
+      } else {
+        enqueueSnackbar('Error creating a room!', { autoHideDuration: 2500, variant: 'error' });
+      }
+    } catch {
+      enqueueSnackbar('Network error creating room.', { autoHideDuration: 2500, variant: 'error' });
+    } finally {
+      setLoading(false);
+      setDisabled(false);
+    }
+  }, [loading, position, enqueueSnackbar, ensureClient, ensureAttached, presenceEnter, safePublish, getChannel]);
+
+  // If the user navigates away from Home without ever mounting Board, silently leave presence best-effort
+  useEffect(() => {
+    return () => {
+      const leave = async () => {
+        try { await presenceLeave(); } catch {}
+      };
+      leave();
+    };
+  }, [presenceLeave]);
+
+  // Computer mode
+  const startComputerMode = () => {
     setComputer(true);
     setJoined(true);
-  }
+    setStartState('play');
+    setColor('white'); // default
+  };
 
+  // Render ------------------------------------------------------------------------------
   return (
     <div>
-      {!joined ?
+      {!joined ? (
         <center>
           <Card className={styles.card} variant="outlined">
             <CardContent>
               {!loading ? (
                 <div>
-                  <Typography className={styles.room} style={{ margin: "4%" }} variant="h5" component="h2" gutterBottom>Room code</Typography>
+                  <Typography className={styles.room} style={{ margin: '4%' }} variant="h5" component="h2" gutterBottom>
+                    Room code
+                  </Typography>
                   <form onSubmit={joinRoom}>
-                    <TextField disabled={disabled} autoFocus style={{marginTop: "10%"}} variant="outlined" size="small" id="input" value={room} onChange={e => onChange(e)}></TextField>
-                    <Button disabled={disabled} style={{ marginLeft: "4%", marginTop: "10.5%" }} variant="contained" color="primary" id="join" onClick={joinRoom}>Join</Button>
+                    <TextField
+                      disabled={disabled}
+                      autoFocus
+                      style={{ marginTop: '10%' }}
+                      variant="outlined"
+                      size="small"
+                      id="input"
+                      value={room}
+                      onChange={onChangeRoomCode}
+                    />
+                    <Button
+                      disabled={disabled}
+                      style={{ marginLeft: '4%', marginTop: '10.5%' }}
+                      variant="contained"
+                      color="primary"
+                      id="join"
+                      onClick={joinRoom}
+                    >
+                      Join
+                    </Button>
                   </form>
-                  <Button disabled={disabled} style={{marginTop: "7%"}} color="primary" id="create" onClick={createRoom}>Create Room</Button>
-                  <Button disabled={disabled} style={{marginTop: "7%"}} onClick={(e) => createRoom(e, true)}>Public Play</Button>
-                  <Typography style={{marginTop: "4%"}}>Play with computer:<Button disabled={disabled} onClick={computerPlay}>Play</Button></Typography>
+                  <Button
+                    disabled={disabled}
+                    style={{ marginTop: '7%' }}
+                    color="primary"
+                    id="create"
+                    onClick={(e) => createRoom(e, false)}
+                  >
+                    Create Room
+                  </Button>
+                  <Button
+                    disabled={disabled}
+                    style={{ marginTop: '7%' }}
+                    onClick={(e) => createRoom(e, true)}
+                  >
+                    Public Play
+                  </Button>
+                  <Typography style={{ marginTop: '4%' }}>
+                    Play with computer:
+                    <Button disabled={disabled} onClick={startComputerMode}>
+                      Play
+                    </Button>
+                  </Typography>
                 </div>
-              ) : <center><CircularProgress /></center>}
+              ) : (
+                <center>
+                  <CircularProgress />
+                </center>
+              )}
             </CardContent>
           </Card>
         </center>
-        : (
-          <div className={styles.App}>
-            {!computer ? 
-            <Board room={room} socket={socket} color={color.toLowerCase()} start={start} position={position} beginning={turn} info={info} /> : 
-            !engine ? 
+      ) : (
+        <div className={styles.App}>
+          {!computer ? (
+            <Board
+              room={room}
+              color={color}
+              start={startState}
+              position={position}
+              beginning={turn}
+              info={info}
+            />
+          ) : !engine ? (
             <center>
               <Card className={styles.card} variant="outlined">
                 <CardContent>
                   <div>
-                    <Typography className={styles.room} style={{ margin: "4%"}} variant="h5" component="h2" gutterBottom>Select Chess Engine</Typography>
-                    <Button style={{marginTop: "7%"}} color='primary' onClick={() => setEngine("custom")}>Custom Engine (easy)</Button>
-                    <br></br>
-                    <Button style={{marginTop: "7%"}} color='primary' onClick={() => setEngine("stockfish")}>Stockfish</Button>
+                    <Typography className={styles.room} style={{ margin: '4%' }} variant="h5" component="h2" gutterBottom>
+                      Select Chess Engine
+                    </Typography>
+                    <Button style={{ marginTop: '7%' }} color="primary" onClick={() => setEngine('custom')}>
+                      Custom Engine (easy)
+                    </Button>
+                    <br />
+                    <Button style={{ marginTop: '7%' }} color="primary" onClick={() => setEngine('stockfish')}>
+                      Stockfish
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
-            </center> : <ComputerBoard engine={engine} position={position} />
-            }
-          </div>
-        )}
+            </center>
+          ) : (
+            <ComputerBoard engine={engine} position={position} />
+          )}
+        </div>
+      )}
     </div>
-  )
+  );
 }
