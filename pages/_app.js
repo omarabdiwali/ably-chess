@@ -1,17 +1,19 @@
 import '@/styles/globals.css'
 import Head from 'next/head'
 import { AblyProvider } from '@/utils/ably/AblyProvider'
+import { Analytics } from "@vercel/analytics/react"
 
 export default function App({ Component, pageProps }) {
   return (
     <>
       <Head>
-        <title>Chess</title>
-        <meta name="google-site-verification" content="I8lDd4E2396ERE7e2VqqxppEraRzY_InsjQyuqZRsqI" />
+        <title>PlayChess</title>
+        <meta name="google-site-verification" content="AFBrxKgnj1l1SuZP7euHyl2zmEnTh5kGcTZgsZZ7bMc" />
       </Head>
       <AblyProvider>
         <Component {...pageProps} />
       </AblyProvider>
+      <Analytics />
     </>
   )
 }
