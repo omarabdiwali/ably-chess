@@ -1,4 +1,4 @@
-# chess
+# AblyChess
 A online chess game created with React, Next.js, and Ably, with a MongoDB Cluster as a database.
 It is a chess board, available with all moves and rules.
 
