@@ -1,8 +1,14 @@
-import dbConnect from "@/utils/dbConnect";
+import dbConnect from "@/utils/api/dbConnect";
+import verifyItems from "@/utils/api/verifyItems";
 import Rooms from "@/models/Rooms";
 
 export default async function handler(req, res) {
   const { code } = req.body;
+  if (!verifyItems([code], ["string"])) {
+    console.error("LOG (/api/active): Invalid request:", code);
+    return res.status(400).json({ response: "Invalid request parameters." });
+  }
+  
   const query = { code: code };
   let color = "";
   let turn = "";
@@ -13,6 +19,9 @@ export default async function handler(req, res) {
 
   try {
     let room = await Rooms.findOne(query).exec();
+    if (!room) {
+      return res.status(400).json({ response });
+    }
 
     if (room.users < 2) {
       color = room.color.includes("White") ? "Black" : "White";
@@ -32,11 +41,8 @@ export default async function handler(req, res) {
       response = "Room is already full."
     }
 
-    res.status(200).json({ response: response, color: color, turn: turn, position: position });
-
+    return res.status(200).json({ response, color, turn, position });
   } catch (error) {
-    // console.log(response);
-    res.status(400).json({ response: response })
+    return res.status(400).json({ response })
   }
-
 }

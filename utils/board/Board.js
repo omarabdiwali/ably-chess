@@ -193,15 +193,28 @@ export default function Board({ room, color, start, position, beginning, info })
 
   // Publishing helpers ------------------------------------------------------------------
 
+  const leaveGame = async (message, variant) => {
+    const payload = { room, color, at: Date.now() };
+    enqueueSnackbar(message, { autoHideDuration: 3000, variant });
+    await safePublish(room, 'delete', payload);
+    setTimeout(window.location.reload(), 2000);
+  };
+
   const publishPieces = useCallback(async (payload) => {
     const next = color === 'white' ? 'black' : 'white';
-    fetch(`/api/move`, {
+    const resp = await fetch(`/api/move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: room, position: payload.pieces, turn: next })
     }).catch(() => {});
-    try { await safePublish(room, 'pieces', payload); } catch {}
-  }, [color, room, safePublish]);
+    const data = await resp.json();
+
+    if (data.message === 'moved') {
+      try { await safePublish(room, 'pieces', payload); } catch {}
+    } else {
+      await leaveGame(data.message, 'error');
+    }
+  }, [color, room, safePublish, leaveGame]);
 
   const publishGame = useCallback(async (winner) => {
     try { await safePublish(room, 'game', winner); } catch {}
@@ -402,19 +415,11 @@ export default function Board({ room, color, start, position, beginning, info })
     }
   };
 
-  // User initiated leave (button)
-  const leaveGame = async () => {
-    const payload = { room, color, at: Date.now() };
-    enqueueSnackbar('Leaving game...', { autoHideDuration: 3000, variant: 'info' });
-    await safePublish(room, 'delete', payload);
-    setTimeout(window.location.reload(), 2000);
-  };
-
   // Render ------------------------------------------------------------------------------
   return (
     <>
       <Typography>Code: {room}  -  Color: {capitalize(color)}  -  <span id="active">{statusText}</span></Typography>
-      <Button size="small" color="error" onClick={leaveGame}>Leave</Button>
+      <Button size="small" color="error" onClick={async () => { leaveGame("Leaving game...", "info") }}>Leave</Button>
       <PromotionModal
         open={isPromoting}
         color={color}

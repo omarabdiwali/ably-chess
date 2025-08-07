@@ -45,8 +45,6 @@ export default function HomePage() {
     setRoom(normalizeCode(e.target.value));
   };
 
-  const randomCode6 = () => Math.floor(100000 + Math.random() * 900000).toString();
-
   // When page state changes, inform provider for disconnect handling
   useEffect(() => {
     setPresenceMeta({ joined, computer, room, color });
@@ -110,13 +108,11 @@ export default function HomePage() {
     setDisabled(true);
     setLoading(true);
 
-    const code = randomCode6();
-
     try {
       const resp = await fetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, isPublic, position })
+        body: JSON.stringify({ isPublic, position })
       });
       const data = await resp.json();
 

@@ -1,16 +1,20 @@
-import dbConnect from "@/utils/dbConnect";
+import dbConnect from "@/utils/api/dbConnect";
+import verifyItems from "@/utils/api/verifyItems";
 import Rooms from "@/models/Rooms";
 
 export default async function handler(req, res) {
   const { code, color } = req.body;
+  if (!verifyItems([code, color], ["string", "string"])) {
+    console.error("LOG (/api/delete): Invalid request:", code, color);
+    return res.status(400).json({ message: "Invalid request parameters. "});
+  }
+  
   const query = { code: code };
-
   await dbConnect();
   try {
     let room = await Rooms.findOne(query).exec();
     if (!room) {
-      res.status(400).json({ message: `Room:${code} does not exist!` });
-      return;
+      return res.status(400).json({ message: `Room:${code} does not exist!` });
     }
 
     let users = room.users;
@@ -22,8 +26,9 @@ export default async function handler(req, res) {
       room.save();
     }
 
-    res.status(200).json({message: "room deleted"});
+    return res.status(200).json({message: "room deleted"});
   } catch (e) {
-    res.status(400).json({ message: e.message });
+    console.error("LOG (/api/delete): Error:", e);
+    return res.status(400).json({ message: e.message });
   }
 }

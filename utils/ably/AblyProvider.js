@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
-import { getAblyClient } from '../ablyClient';
+import { getAblyClient } from './ablyClient';
 import { capitalize } from '@/moves/helperFunctions';
 
 const AblyContext = createContext(null);

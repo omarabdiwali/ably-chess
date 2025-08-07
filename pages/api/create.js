@@ -1,13 +1,40 @@
-import dbConnect from "@/utils/dbConnect";
+import dbConnect from "@/utils/api/dbConnect";
+import verifyItems from "@/utils/api/verifyItems";
 import Rooms from "@/models/Rooms";
 
+const randomCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export default async function handler(req, res) {
-  const { code, isPublic, position } = req.body;
+  const { isPublic, position } = req.body;
+  if (!verifyItems([isPublic, position], ["boolean", "object"])) {
+    console.error("LOG (/api/create): Invalid request:", isPublic, position);
+    return res.status(400).json({ response: "Invalid request parameters." });
+  }
+  
   const color = Math.random() > 0.5 ? "White" : "Black";
-  const query = { code: code };
-  const data = { code: code, users: 1, color: [color], position: JSON.stringify(position), turn: "white", public: isPublic };
+  const data = { users: 1, color: [color], position: JSON.stringify(position), turn: "white", public: isPublic };
   let created = true;
   let response = "";
+
+  const createNewRoom = async (retries = 0) => {
+    data.code = randomCode();
+    try {
+      await Rooms.create(data);
+      return res.status(200).json({
+        response: "Room has been created.",
+        code: data.code,
+        color,
+        position: data.position,
+        created
+      });
+    } catch (err) {
+      if (err?.code === 11000 && retries < 5) return createNewRoom(retries + 1);
+      console.error(err);
+      return res.status(500).json({ response: "Failed to create room" });
+    }
+  };
 
   await dbConnect();
 
@@ -22,19 +49,13 @@ export default async function handler(req, res) {
       publicRoom.color.push(color);
       publicRoom.public = false;
       created = false;
-      publicRoom.save();
-      res.status(200).json({ response, code: publicRoom.code, color, position: publicRoom.position, created });
+      await publicRoom.save();
+      return res.status(200).json({ response, code: publicRoom.code, color, position: publicRoom.position, created });
     } else {
-      await Rooms.create(data).catch(err => console.error(err));
-      res.status(200).json({ response, code, color, position, created });
+      await createNewRoom();
     }
   } 
   else {
-    let user = await Rooms.findOne(query).exec();
-    if (!user) {
-      await Rooms.create(data).catch(err => console.error(err));
-      response = "Room has been created.";
-    }
-    res.status(200).json({ response, color, position, code, created });
+    await createNewRoom();
   }
 }

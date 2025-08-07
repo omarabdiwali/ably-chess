@@ -17,7 +17,6 @@ export default async function handler(req, res) {
 
     const tokenParams = {
       clientId: 'chess-' + Math.random().toString(36).slice(2, 8),
-      // clientId: 'optional-client-id',
       capability: JSON.stringify({ "chess:*": ["publish", "subscribe", "presence"] }),
       ttl: 1000 * 60 * 60 // 1 hour
     };
