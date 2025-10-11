@@ -16,17 +16,24 @@ import {
   clearEnPassant,
   clearSquare,
   capitalize,
-} from '../../moves/helperFunctions.js';
+} from '../moves/helperFunctions.js';
 import { useSnackbar } from 'notistack';
-import styles from "./Board.module.css";
-import Button from "@mui/material/Button";
-import { Typography } from '@mui/material';
 import useSound from 'use-sound';
-import PromotionModal from '../components/PromotionModal.js';
-import { useAbly } from '../ably/AblyProvider';
+import PromotionModal from './PromotionModal.js';
+import { useAbly } from '../utils/ably/AblyProvider.js';
 
 export default function Board({ room, color, start, position, beginning, info }) {
   const BOARD_SIZE = 8;
+  const styles = {
+    cell: 'w-[70px] h-[70px] inline-block',
+    row: 'h-[70px]',
+    smCell: 'w-[45px] h-[45px] inline-block',
+    smRow: 'h-[45px]',
+    xsCell: 'w-[30px] h-[30px] inline-block',
+    xsRow: 'h-[30px]',
+    even: 'bg-[#EED8C0] even',
+    odd: 'bg-[#8A5742] odd',
+  };
 
   // Game state
   const [curPos, setCurPos] = useState(position);
@@ -418,8 +425,8 @@ export default function Board({ room, color, start, position, beginning, info })
   // Render ------------------------------------------------------------------------------
   return (
     <>
-      <Typography>Code: {room}  -  Color: {capitalize(color)}  -  <span id="active">{statusText}</span></Typography>
-      <Button size="small" color="error" onClick={async () => { leaveGame("Leaving game...", "info") }}>Leave</Button>
+      <p className="text-gray-400">Code: {room} - Color: {capitalize(color)} - <span id="active">{statusText}</span></p>
+      <button onClick={async () => { leaveGame("Leaving game...", "info") }} className='text-red-300 rounded-xl m-1 px-3 py-1 bg-transparent cursor-pointer hover:text-red-400'>Leave</button>
       <PromotionModal
         open={isPromoting}
         color={color}

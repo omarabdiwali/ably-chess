@@ -9,9 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@emotion/react": "^11.13.3",
-    "@emotion/styled": "^11.13.0",
-    "@mui/material": "^6.1.4",
     "@vercel/analytics": "^1.5.0",
     "ably": "^2.10.1",
     "mongoose": "^8.7.1",
@@ -23,7 +20,9 @@
     "use-sound": "^4.0.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
     "eslint": "^8",
-    "eslint-config-next": "14.2.15"
+    "eslint-config-next": "14.2.15",
+    "tailwindcss": "^4.1.14"
   }
 }

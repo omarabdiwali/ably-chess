@@ -1,5 +1,5 @@
 import { SnackbarProvider } from "notistack";
-import HomePage from "@/utils/home/Home";
+import HomePage from "@/components/Home";
 
 export default function Home() {
   return (

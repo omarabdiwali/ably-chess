@@ -5,15 +5,22 @@ import {
   setEnPassant, clearEnPassant
 } from "@/moves/helperFunctions";
 import { useSnackbar } from 'notistack';
-import styles from "../board/Board.module.css";
-import { minimaxRoot, posToFen } from './minimaxRec.js';
-import Button from "@mui/material/Button";
-import Typography from '@mui/material/Typography';
+import { minimaxRoot, posToFen } from '../utils/minimaxRec.js';
 import useSound from 'use-sound';
-import PromotionModal from '../components/PromotionModal';
+import PromotionModal from './PromotionModal.js';
 
 export default function ComputerBoard({ position, engine }) {
   const BOARD_SIZE = 8;
+  const styles = {
+    cell: 'w-[70px] h-[70px] inline-block',
+    row: 'h-[70px]',
+    smCell: 'w-[45px] h-[45px] inline-block',
+    smRow: 'h-[45px]',
+    xsCell: 'w-[30px] h-[30px] inline-block',
+    xsRow: 'h-[30px]',
+    even: 'bg-[#EED8C0] even',
+    odd: 'bg-[#8A5742] odd',
+  };
   const square = [];
 
   const [curPos, setCurPos] = useState(position);
@@ -386,8 +393,8 @@ export default function ComputerBoard({ position, engine }) {
 
   return (
     <>
-      <Typography id="active">Status: Active</Typography>
-      <Button color="error" size="small" onClick={leaveGame}>Leave</Button>
+      <p id="active" className="text-gray-400">Status: Active</p>
+      <button onClick={leaveGame} className='text-red-300 rounded-xl mb-1 px-3 py-1 bg-transparent cursor-pointer hover:text-red-400'>Leave</button>
       <PromotionModal
         open={isPromoting}
         color="white"
