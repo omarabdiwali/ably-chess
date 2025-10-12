@@ -63,7 +63,7 @@ export default function Board({ room, color, start, position, beginning, info })
   const [playEnd] = useSound(`${soundsPath}/game-end.mp3`);
 
   const { enqueueSnackbar } = useSnackbar();
-  const { getChannel, ensureAttached, safePublish } = useAbly();
+  const { getChannel, ensureAttached, safePublish, cleanupDoneRef } = useAbly();
 
   // Ably
   const channelRef = useRef(null);
@@ -200,11 +200,23 @@ export default function Board({ room, color, start, position, beginning, info })
 
   // Publishing helpers ------------------------------------------------------------------
 
-  const leaveGame = async (message, variant) => {
+  const leaveGame = (message, variant) => {
+    if (cleanupDoneRef.current) return;
+    cleanupDoneRef.current = true;
+
     const payload = { room, color, at: Date.now() };
     enqueueSnackbar(message, { autoHideDuration: 3000, variant });
-    await safePublish(room, 'delete', payload);
-    setTimeout(window.location.reload(), 2000);
+    
+    fetch('/api/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ code: room, color: capitalize(color) }),
+      keepalive: true
+    }).catch(() => {});
+    
+    safePublish(room, 'delete', payload).then(() => {
+      setTimeout(() => window.location.reload(), 2000);
+    });
   };
 
   const publishPieces = useCallback(async (payload) => {
@@ -426,7 +438,7 @@ export default function Board({ room, color, start, position, beginning, info })
   return (
     <>
       <p className="text-gray-400">Code: {room} - Color: {capitalize(color)} - <span id="active">{statusText}</span></p>
-      <button onClick={async () => { leaveGame("Leaving game...", "info") }} className='text-red-300 rounded-xl m-1 px-3 py-1 bg-transparent cursor-pointer hover:text-red-400'>Leave</button>
+      <button onClick={() => { leaveGame("Leaving game...", "info") }} className='text-red-300 rounded-xl m-1 px-3 py-1 bg-transparent cursor-pointer hover:text-red-400'>Leave</button>
       <PromotionModal
         open={isPromoting}
         color={color}

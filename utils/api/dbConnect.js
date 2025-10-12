@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import Rooms from "../../models/Rooms.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -18,7 +19,12 @@ async function dbConnect() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI).then(mongoose => {
+    cached.promise = mongoose.connect(MONGODB_URI).then(async mongoose => {
+      try {
+        await Rooms.syncIndexes();
+      } catch (err) {
+        console.error(err);
+      }
       return mongoose;
     })
   }

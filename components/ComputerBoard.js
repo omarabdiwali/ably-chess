@@ -267,7 +267,7 @@ export default function ComputerBoard({ position, engine }) {
 
   const leaveGame = () => {
     enqueueSnackbar("Goodbye!", { autoHideDuration: 3000, variant: "success" });
-    setInterval(window.location.reload(), 2000);
+    setTimeout(() => window.location.reload(), 2000);
   }
 
   const pieceMovement = (e) => {

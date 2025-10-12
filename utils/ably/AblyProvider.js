@@ -20,6 +20,7 @@ export function AblyProvider({ children }) {
   const channelMapRef = useRef(new Map());
   const presenceInfoRef = useRef({ joined: false, computer: false, room: '', color: '' });
   const disconnectHandledRef = useRef(false);
+  const cleanupDoneRef = useRef(false);
 
   const ensureClient = useCallback(async () => {
     let client = clientRef.current;
@@ -151,7 +152,7 @@ export function AblyProvider({ children }) {
         // logServer(`roomPresence leave room=${room} color=${color}`);
       }
     } catch (e) {
-        logServer
+        // logServer(`roomPresenceError leave room=${room} color=${color} - error: ${e?.message || e}`)
     }
   }, [getChannel]);
 
@@ -163,14 +164,13 @@ export function AblyProvider({ children }) {
   // Automatic disconnection handling and cleanup
   useEffect(() => {
     const beforeUnload = async () => {
-      if (disconnectHandledRef.current) return;
+      if (cleanupDoneRef.current) return;
+      cleanupDoneRef.current = true;
+
       const { joined, computer, room, color } = presenceInfoRef.current;
       if (!joined || computer || !room || !color) return;
 
-      disconnectHandledRef.current = true;
-
       try {
-        // Best-effort Ably publish 'delete' to the room
         const ch = await getChannel(room);
         if (ch) {
           try {
@@ -186,7 +186,6 @@ export function AblyProvider({ children }) {
         // logServer(`roomError preparing publish on beforeunload: ${e?.message || e}`);
       }
 
-      // Notify your server too (existing behavior)
       try {
         const payload = JSON.stringify({
           code: room,
@@ -201,13 +200,13 @@ export function AblyProvider({ children }) {
           // logServer(`roomfetch /api/delete payload=${payload}`);
         }
       } catch {
-        logServer(`roomError sending /api/delete on beforeunload for room=${room}`);
+        // logServer(`roomError sending /api/delete on beforeunload for room=${room}`);
       }
 
       try {
         await presenceLeave();
       } catch {}
-    };
+    }
 
     window.addEventListener('beforeunload', beforeUnload);
     // logServer('roomAdded beforeunload listener');
@@ -226,7 +225,8 @@ export function AblyProvider({ children }) {
     presenceEnter,
     presenceLeave,
     setPresenceMeta,
-  }), [getChannel, ensureClient, ensureAttached, safePublish, presenceEnter, presenceLeave, setPresenceMeta]);
+    cleanupDoneRef
+  }), [getChannel, ensureClient, ensureAttached, safePublish, presenceEnter, presenceLeave, setPresenceMeta, cleanupDoneRef]);
 
   return (
     <AblyContext.Provider value={value}>

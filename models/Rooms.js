@@ -13,4 +13,5 @@ const RoomSchema = new mongoose.Schema({
   public: Boolean,
 }, { timestamps: true });
 
+RoomSchema.index({ updatedAt: 1 }, { expireAfterSeconds: 1800 });
 module.exports = mongoose.models.Rooms || mongoose.model("Rooms", RoomSchema);
