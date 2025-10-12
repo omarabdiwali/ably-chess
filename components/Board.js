@@ -215,7 +215,7 @@ export default function Board({ room, color, start, position, beginning, info })
     }).catch(() => {});
     
     safePublish(room, 'delete', payload).then(() => {
-      setTimeout(() => window.location.reload(), 2000);
+      window.location.reload();
     });
   };
 
@@ -231,7 +231,7 @@ export default function Board({ room, color, start, position, beginning, info })
     if (data.message === 'moved') {
       try { await safePublish(room, 'pieces', payload); } catch {}
     } else {
-      await leaveGame(data.message, 'error');
+      leaveGame(data.message, 'error');
     }
   }, [color, room, safePublish, leaveGame]);
 
