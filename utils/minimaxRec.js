@@ -229,6 +229,7 @@ export const minimaxRoot = (depth, position, turn, castle, lCastle, rCastle, pas
     }
   }
 
+  if (bestMoveFound.length == 0) return null;
   return bestMoveFound.length > 1 ? [random(bestMoveFound), already] : [bestMoveFound[0], already];
 }
 

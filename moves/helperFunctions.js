@@ -543,6 +543,7 @@ export function imageType(type) {
   }
 }
 
+/** Translates `row` and `col` (ranges from 0-7) values to a 1-64 position. */
 export function rcToPos(row, col, isBlackView) {
   if (isBlackView) {
     const r = 7 - row;
@@ -553,6 +554,7 @@ export function rcToPos(row, col, isBlackView) {
   }
 }
 
+/** Translates a 1-64 position into a `row` and `col` value (ranges from 0-7). */
 export function posToRC(pos, isBlackView) {
   let row = Math.floor(pos / 8);
   let col = (pos - (row * 8) - 1);
@@ -566,5 +568,26 @@ export function posToRC(pos, isBlackView) {
     return { row: 7 - row, col: 7 - col };
   } else {
     return { row, col };
+  }
+}
+
+/** Resizes the chess board according to the screen width and height. */
+export function resizeBoard() {
+  if (typeof window == "undefined") return;
+
+  const cellWidth = Math.floor(window.innerWidth / 8) - 2;
+  const cellHeight = Math.floor(window.innerHeight / 8) - 2;
+  const cellSize = Math.min(Math.min(cellWidth, cellHeight), 70);
+  const pixelValue = `${cellSize}px`;
+  const board = document.getElementById("board");
+  
+  for (const row of board.children) {
+    if (!row || !row.children) continue;
+    if (row.style.height == pixelValue) return;
+    row.style.height = pixelValue;
+    for (const child of row.children) {
+      child.style.width = pixelValue;
+      child.style.height = pixelValue;
+    }
   }
 }

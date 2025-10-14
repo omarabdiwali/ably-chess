@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   getValidMoves, colorValid, clearColors, updateCurPositions, startGame, colorSquare, 
-  nextPositions, otherPlayerMoves, checkCastle, castling, checkMate, checked, translateMove,
+  nextPositions, resizeBoard, checkCastle, castling, checkMate, checked, translateMove,
   setEnPassant, clearEnPassant
 } from "@/moves/helperFunctions";
 import { useSnackbar } from 'notistack';
@@ -14,10 +14,6 @@ export default function ComputerBoard({ position, engine }) {
   const styles = {
     cell: 'w-[70px] h-[70px] inline-block',
     row: 'h-[70px]',
-    smCell: 'w-[45px] h-[45px] inline-block',
-    smRow: 'h-[45px]',
-    xsCell: 'w-[30px] h-[30px] inline-block',
-    xsRow: 'h-[30px]',
     even: 'bg-[#EED8C0] even',
     odd: 'bg-[#8A5742] odd',
   };
@@ -42,8 +38,6 @@ export default function ComputerBoard({ position, engine }) {
   const [bCastle, setBCastle] = useState(true);
   const [blCastle, setBLCastle] = useState(true);
   const [brCastle, setBRCastle] = useState(true);
-
-  const [cellSize, setCellSize] = useState(1);
 
   const [passedMoves, setPassedMoves] = useState({});
   const [enPassant, setEP] = useState(null);
@@ -105,23 +99,19 @@ export default function ComputerBoard({ position, engine }) {
     setPendingMove(null);
   };
 
-  const changeLayout = useCallback(e => {
-    setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
-  }, [])
-
   useEffect(() => {
-    setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
+    resizeBoard();
     startGame(position);
     setEP(null);
     clearEnPassant();
-  }, [position])
+  }, [resizeBoard, position])
 
   useEffect(() => {
-    window.addEventListener("resize", changeLayout);
+    window.addEventListener("resize", resizeBoard);
     return () => {
-      window.removeEventListener("resize", changeLayout);
+      window.removeEventListener("resize", resizeBoard);
     }
-  }, [changeLayout])
+  }, [resizeBoard])
 
   useEffect(() => {
     if (turn) return;
@@ -151,12 +141,24 @@ export default function ComputerBoard({ position, engine }) {
 
     if (engine === "stockfish") {
       data = await fetchStockfishMove();
+      if (data.type && data.type == "error") {
+        playEnd();
+        setGame("end");
+        document.getElementById("active").innerHTML = "Status: White Wins!";
+        return;
+      }
       prevPosLocal = translateMove(data.fromNumeric);
       nextPosLocal = translateMove(data.toNumeric);
       piece = curPos[prevPosLocal];
       toPiece = curPos[nextPosLocal];
     } else {
       let move = minimaxRoot(1, curPos, true, bCastle, blCastle, brCastle, passedMoves, enPassant);
+      if (move == null) {
+        playEnd();
+        setGame("end");
+        document.getElementById("active").innerHTML = "Status: White Wins!";
+        return;
+      }
       setPassedMoves(move[1]);
       piece = move[0][0]; prevPosLocal = move[0][2]; nextPosLocal = move[0][3];
       fromPiece = curPos[prevPosLocal];
@@ -404,11 +406,11 @@ export default function ComputerBoard({ position, engine }) {
       <div id="board" onClick={e => pieceMovement(e)}>
         {board.map((_, idx) => {
           return (
-            <div className={cellSize == 1 ? styles.row : cellSize == 2 ? styles.smRow : styles.xsRow} key={idx}>
+            <div className={styles.row} key={idx}>
               {square.map((cell, id) => {
                 const pos = idx * BOARD_SIZE + cell;
                 return (
-                  <div className={`${cellSize == 1 ? styles.cell : cellSize == 2 ? styles.smCell : styles.xsCell} ${(idx + id + 2) % 2 === 0 ? styles.even : styles.odd }`} key={String(pos) + "a"} id={String(pos)}></div>
+                  <div className={`${styles.cell} ${(idx + id + 2) % 2 === 0 ? styles.even : styles.odd }`} key={String(pos) + "a"} id={String(pos)}></div>
                 )
               })}
             </div>

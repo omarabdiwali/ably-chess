@@ -16,6 +16,7 @@ import {
   clearEnPassant,
   clearSquare,
   capitalize,
+  resizeBoard,
 } from '../moves/helperFunctions.js';
 import { useSnackbar } from 'notistack';
 import useSound from 'use-sound';
@@ -27,10 +28,6 @@ export default function Board({ room, color, start, position, beginning, info })
   const styles = {
     cell: 'w-[70px] h-[70px] inline-block',
     row: 'h-[70px]',
-    smCell: 'w-[45px] h-[45px] inline-block',
-    smRow: 'h-[45px]',
-    xsCell: 'w-[30px] h-[30px] inline-block',
-    xsRow: 'h-[30px]',
     even: 'bg-[#EED8C0] even',
     odd: 'bg-[#8A5742] odd',
   };
@@ -47,7 +44,6 @@ export default function Board({ room, color, start, position, beginning, info })
   const [castle, setCastle] = useState(true);
   const [lCastle, setLCastle] = useState(true);
   const [rCastle, setRCastle] = useState(true);
-  const [cellSize, setCellSize] = useState(1);
   const [enPassant, setEP] = useState(null); // { targetPos, capturedPos, color }
   const [isPromoting, setIsPromoting] = useState(false);
   const [pendingMove, setPendingMove] = useState(null);
@@ -74,22 +70,18 @@ export default function Board({ room, color, start, position, beginning, info })
 
   // Initial board setup
   useEffect(() => {
+    resizeBoard();
     startGame(position);
     if (typeof window !== 'undefined') {
-      setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
       window.__isBlackView = (color === 'black');
     }
-  }, [position, color]);
-
-  const onResize = useCallback(() => {
-    setCellSize(window.innerWidth >= 560 ? 1 : window.innerWidth >= 400 ? 2 : 3);
-  }, []);
+  }, [resizeBoard, position, color]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.addEventListener('resize', onResize);
-    return () => { window.removeEventListener('resize', onResize); };
-  }, [onResize]);
+    window.addEventListener('resize', resizeBoard);
+    return () => { window.removeEventListener('resize', resizeBoard); };
+  }, [resizeBoard]);
 
   // Channel setup and subscriptions
   useEffect(() => {
@@ -449,13 +441,13 @@ export default function Board({ room, color, start, position, beginning, info })
         {Array.from({ length: BOARD_SIZE }).map((_, r) => {
           const uiRow = (color === 'black') ? (BOARD_SIZE - 1 - r) : r;
           return (
-            <div className={cellSize === 1 ? styles.row : cellSize === 2 ? styles.smRow : styles.xsRow} key={uiRow}>
+            <div className={styles.row} key={uiRow}>
               {Array.from({ length: BOARD_SIZE }).map((_, c) => {
                 const uiCol = (color === 'black') ? (BOARD_SIZE - 1 - c) : c;
                 const pos = uiRow * BOARD_SIZE + (uiCol + 1);
                 return (
                   <div
-                    className={`${cellSize === 1 ? styles.cell : cellSize === 2 ? styles.smCell : styles.xsCell} ${(uiRow + uiCol + 2) % 2 === 0 ? styles.even : styles.odd}`}
+                    className={`${styles.cell} ${(uiRow + uiCol + 2) % 2 === 0 ? styles.even : styles.odd}`}
                     key={String(pos) + 'a'}
                     id={String(pos)}
                   />
