@@ -3,6 +3,8 @@
 
 AblyChess is a fully functional online chess game built with React, Next.js, TailwindCSS, and Ably, utilizing a MongoDB Cluster as a database. This project showcases a seamless integration of real-time multiplayer capabilities, robust game logic, and a user-friendly interface.
 
+![Home Page](https://i.imgur.com/EvEGsOA.png)
+
 **Gameplay Features**
 --------------------
 
@@ -28,10 +30,6 @@ AblyChess is a fully functional online chess game built with React, Next.js, Tai
 -----------------------------
 
 Try out the live website: https://ably-chess.vercel.app
-
-### Home Page
-
-![Home Page](https://i.imgur.com/EvEGsOA.png)
 
 ### Valid Movements
 
